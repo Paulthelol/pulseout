@@ -1,9 +1,9 @@
-import './globals.css'
+import '@/app/ui/global.css'
 import { Inter } from 'next/font/google'
 
 export const metadata = {
-  metadataBase: new URL('https://postgres-drizzle.vercel.app'),
-  title: 'Postgres Demo with Drizzle',
+  metadataBase: new URL('https://pulseout.vercel.app/'),
+  title: 'Welcome to PulseOut',
   description:
     'A simple Next.js app with a Postgres database and Drizzle as the ORM',
 }
