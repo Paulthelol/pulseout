@@ -11,7 +11,7 @@ export default function LoginForm() {
                     </label>
                     <div className="relative">
                         <input
-                            className="w-full rounded-md border border-gray-500 pl-2 py-2"
+                            className="w-full rounded-md border border-gray-200 pl-2 py-2"
                             placeholder="Enter your email address"
                         />
                     </div>
@@ -30,7 +30,7 @@ export default function LoginForm() {
                     </div>
 
                 </div>
-                <button className="mt-2 rounded-md bg-green-600 w-full px-10 py-2 text-white transition-colors hover:bg-green-500">
+                <button className="mt-2 rounded-md bg-[#5591f5] w-full px-10 py-2 text-white transition-colors hover:bg-[#3eabf4]">
                     Login
                 </button>
             </div>
