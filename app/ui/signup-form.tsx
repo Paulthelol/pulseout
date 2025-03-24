@@ -1,13 +1,24 @@
 'use client';
-import Link from "next/link";
 import { SpotifyLoginButton } from "./spotify-login-button";
+import Link from "next/link";
 
-export default function LoginForm() {
+export default function SignupForm() {
 
     return (
         <form className="space-y-2">
-            <div className="py-4 bg-slate-300 px-4 rounded-lg">
+            <div className="py-4 bg-slate-300 px-4 rounded-lg bg-opacity-90">
                 <div className="">
+                    <label>
+                        Username
+                    </label>
+                    <div className="relative">
+                        <input
+                            className="w-full rounded-md border border-gray-200 pl-2 py-2"
+                            placeholder="Enter a username"
+                        />
+                    </div>
+                </div>
+                <div className="mt-2">
                     <label>
                         Email
                     </label>
@@ -18,7 +29,6 @@ export default function LoginForm() {
                         />
                     </div>
                 </div>
-
                 <div className="mt-2">
                     <label>
                         Password
@@ -29,14 +39,20 @@ export default function LoginForm() {
                             placeholder="Enter your password"
                         />
                     </div>
-
                 </div>
-                <button className="mt-4 rounded-md w-full px-2 py-2 text-white transition-colors]"
-                    style={{
-                        background: 'linear-gradient(135deg, #b429f9, #9c43f8, #855df7, #6d77f6, #5591f5, #3eabf4, #26c5f3)',
-                    }}
-                >
-                    Login
+                <div className="mt-2">
+                    <label>
+                        Confirm Password
+                    </label>
+                    <div className="relative">
+                        <input
+                            className="w-full rounded-md border border-gray-200 pl-2 py-2"
+                            placeholder="Re-enter your password"
+                        />
+                    </div>
+                </div>
+                <button className="mt-4 rounded-md bg-[#5591f5] w-full px-2 py-2 text-white transition-colors hover:bg-[#3eabf4]">
+                    Sign Up
                 </button>
                 <div>
                     <p className="text-center">or</p>
@@ -45,7 +61,7 @@ export default function LoginForm() {
                     <SpotifyLoginButton spotifyAuthUrl={""} />
                 </div>
                 <div className="mt-4 flex justify-center">
-                    <p>Already have an account?</p> <Link href="/signup" className="ml-1 text-[#5591f5] underline">Sign up.</Link>
+                    <p>Already have an account?</p> <Link href="/login" className="ml-1 text-[#5591f5] underline">Login.</Link>
                 </div>
             </div>
         </form>
