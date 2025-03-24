@@ -1,6 +1,8 @@
 export default function MusicGrid() {
 
     return (
-        <main></main>
+        <main>
+            <p>View song grid here</p>
+        </main>
     )
 }
