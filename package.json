@@ -8,7 +8,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "cd node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt && pnpm install"
   },
   "dependencies": {
     "@types/bcrypt": "^5.0.2",
