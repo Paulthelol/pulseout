@@ -26,6 +26,7 @@ export default function SignupForm() {
                         <input
                             className="w-full rounded-md border border-gray-200 pl-2 py-2"
                             placeholder="Enter your email address"
+                            required
                         />
                     </div>
                 </div>
@@ -37,6 +38,7 @@ export default function SignupForm() {
                         <input
                             className="w-full rounded-md border border-gray-200 pl-2 py-2"
                             placeholder="Enter your password"
+                            required
                         />
                     </div>
                 </div>
@@ -48,6 +50,7 @@ export default function SignupForm() {
                         <input
                             className="w-full rounded-md border border-gray-200 pl-2 py-2"
                             placeholder="Re-enter your password"
+                            required
                         />
                     </div>
                 </div>
