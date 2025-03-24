@@ -45,7 +45,7 @@ export default function LoginForm() {
                     <SpotifyLoginButton spotifyAuthUrl={""} />
                 </div>
                 <div className="mt-4 flex justify-center">
-                    <p>Don't have an account?</p> <Link href="/signup" className="ml-1 text-[#5591f5] underline">Sign up.</Link>
+                    <p>Don&apos;t have an account?</p> <Link href="/signup" className="ml-1 text-[#5591f5] underline">Sign up.</Link>
                 </div>
             </div>
         </form>
