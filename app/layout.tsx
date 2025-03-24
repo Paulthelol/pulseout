@@ -1,5 +1,5 @@
 import '@/app/ui/global.css'
-import { Inter } from 'next/font/google'
+import {noto_sans} from '@/app/ui/fonts'
 
 export const metadata = {
   metadataBase: new URL('https://pulseout.vercel.app/'),
@@ -8,12 +8,6 @@ export const metadata = {
     'A simple Next.js app with a Postgres database and Drizzle as the ORM',
 }
 
-const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
-  display: 'swap',
-})
-
 export default function RootLayout({
   children,
 }: {
@@ -21,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.variable}>{children}</body>
+      <body className={`${noto_sans.className} antialiased`}>{children}</body>
     </html>
   )
 }
