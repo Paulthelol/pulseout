@@ -5,7 +5,7 @@ export const metadata = {
   metadataBase: new URL('https://pulseout.vercel.app/'),
   title: 'Welcome to PulseOut',
   description:
-    'A simple Next.js app with a Postgres database and Drizzle as the ORM',
+    'A new social music platform for music lovers!',
 }
 
 export default function RootLayout({
