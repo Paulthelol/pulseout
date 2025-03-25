@@ -1,5 +1,13 @@
+import SideBar from "../ui/side-bar";
+
 export default function Layout({ children }: { children: React.ReactNode }) {
     return (
-        <div>{children}</div>
+        <div>
+            <div>
+                <SideBar />
+            </div>
+            <div>{children}</div>
+        </div>
+
     );
-  }
+}

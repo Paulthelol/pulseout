@@ -1,55 +1,41 @@
 'use client';
-import Link from "next/link";
-import { SpotifyLoginButton } from "./spotify-login-button";
+
+import Image from 'next/image';
+import { authenticateSpotify } from '@/lib/actions';
+import { useSearchParams } from 'next/navigation';
+import { useActionState } from 'react';
 
 export default function LoginForm() {
+    const searchParams = useSearchParams();
+    const callbackUrl = searchParams.get('callbackUrl') || '/musicgrid';
+    const [errorMessage, formAction, isPending] = useActionState(
+        authenticateSpotify,
+        undefined
+    );
 
     return (
-        <form className="space-y-2">
+        <form
+            action={formAction}
+        >
             <div className="py-4 bg-slate-300 px-4 rounded-lg">
-                <div className="">
-                    <label>
-                        Email
-                    </label>
-                    <div className="relative">
-                        <input
-                            className="w-full rounded-md border border-gray-200 pl-2 py-2"
-                            placeholder="Enter your email address"
-                            required
-                        />
-                    </div>
-                </div>
-
-                <div className="mt-2">
-                    <label>
-                        Password
-                    </label>
-                    <div className="relative">
-                        <input
-                            className="w-full rounded-md border border-gray-200 pl-2 py-2"
-                            placeholder="Enter your password"
-                            required
-                        />
-                    </div>
-
-                </div>
-                <button className="mt-4 rounded-md w-full px-2 py-2 text-white transition-colors]"
-                    style={{
-                        background: 'linear-gradient(135deg, #b429f9, #9c43f8, #855df7, #6d77f6, #5591f5, #3eabf4, #26c5f3)',
-                    }}
+                <input type='hidden' name='redirectTo' value={callbackUrl} />
+                <button
+                    className={
+                        'w-full flex items-center rounded-md bg-black px-4 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 active:bg-green-600 '
+                    }
+                    type="submit"
                 >
-                    Login
+                    <Image
+                        src="/Spotify_logo_without_text.svg" // Ensure your logo is in the public folder or update the path accordingly.
+                        alt="Spotify Logo"
+                        width={24}
+                        height={24}
+                        className="mr-2"
+                    />
+                    {'Log in with Spotify'}
                 </button>
-                <div>
-                    <p className="text-center">or</p>
-                </div>
-                <div>
-                    <SpotifyLoginButton spotifyAuthUrl={""} />
-                </div>
-                <div className="mt-4 flex justify-center">
-                    <p>Don&apos;t have an account?</p> <Link href="/signup" className="ml-1 text-[#5591f5] underline">Sign up.</Link>
-                </div>
             </div>
-        </form>
-    )
+        </form >
+
+    );
 }

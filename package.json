@@ -12,6 +12,8 @@
     "postinstall": "cd node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt && pnpm install"
   },
   "dependencies": {
+    "@auth/supabase-adapter": "^1.8.0",
+    "@supabase/supabase-js": "^2.49.3",
     "@types/bcrypt": "^5.0.2",
     "@types/ms": "^0.7.34",
     "@types/node": "20.8.3",
@@ -23,6 +25,7 @@
     "drizzle-orm": "^0.28.6",
     "ms": "^2.1.3",
     "next": "^15.2.3",
+    "next-auth": "5.0.0-beta.25",
     "postcss": "8.4.31",
     "postgres": "^3.4.5",
     "react": "19.0.0",
