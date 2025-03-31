@@ -1,16 +1,11 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
-import { NextRequest, NextResponse } from "next/server";
 
-//export default NextAuth(authConfig).auth;
+export default NextAuth(authConfig).auth;
 
-export async function middleware(request: NextRequest) {
-      return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-//Matcher triggers middleware to run
+//Matcher triggers middleware to run (middleware is implemented in authConfig for this project)
 export const config = {
     matcher: [
-        '/musicgrid:path*',
-    ]
-}
+      '/((?!api|_next/static|_next/image|Spotify_logo_without_text.svg|sitemap.xml|robots.txt).+)',
+    ],
+  };
