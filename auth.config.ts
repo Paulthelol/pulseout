@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import Spotify from "next-auth/providers/spotify"
 
+//Responsible for enforcing middleware rules
 export const authConfig = {
     providers: [Spotify],
     pages: {
@@ -9,6 +10,7 @@ export const authConfig = {
     },
     callbacks: {
       authorized({ auth, request: { nextUrl } }) {
+        console.log("Middleware run!");
         const isLoggedIn = !!auth?.user;
         const isOnMusicGrid = nextUrl.pathname.startsWith('/musicgrid');
         const isOnLoginpage = nextUrl.pathname.startsWith('/login');
