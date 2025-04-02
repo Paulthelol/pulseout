@@ -8,12 +8,11 @@ export async function authenticateSpotify(
     formData: FormData
 ) {
     console.log('authenticateSpotify Server Action called!');
-
     try {
         await signIn('spotify', formData);
     } catch (error) {
-        console.error('Error during signIn:', error);
         if (error instanceof AuthError) {
+            console.error('Error during signIn:', error);
             switch (error.type) {
               case 'CredentialsSignin':
                 return 'Invalid credentials.';
