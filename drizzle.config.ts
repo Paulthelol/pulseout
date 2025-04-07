@@ -6,8 +6,7 @@ export default defineConfig({
   schema: './src/db/schema.ts',
   dialect: 'postgresql',
   dbCredentials: {
-    // Use process.env directly inline
-    host: process.env.POSTGRES_URL!, // Non-null assertion (!) assumes check passed
+    host: process.env.DATABASE_URL!, // Non-null assertion (!) assumes check passed
     port: 6543, // Standard Supabase pooler port
     user: process.env.POSTGRES_USER!,
     password: process.env.POSTGRES_PASSWORD!,
