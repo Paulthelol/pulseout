@@ -5,8 +5,9 @@ import Link from 'next/link';
 
 export default function WelcomePage() {
   return (
-    <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-r from-purple-500 to-blue-400">
-      <div className="text-center backdrop-blur-md py-12 rounded-xl shadow-lg space-y-6 max-w-md w-full">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-r from-purple-500 to-blue-400">
+      <div className="bg-white/20 backdrop-blur-md px-10 py-12 rounded-xl shadow-lg space-y-6 max-w-md mx-auto text-center">
+        {/* PulseOut Logo */}
         <Image
           src="/logo.png"
           alt="PulseOut Logo"
@@ -14,11 +15,14 @@ export default function WelcomePage() {
           height={120}
           className="mx-auto"
         />
-        <h1 className="text-white text-3xl font-semibold">Welcome to PulseOut!</h1>
-          
+
+        {/* Welcome Text */}
+        <h1 className="text-white text-2xl font-semibold">Welcome to PulseOut!</h1>
+
+        {/* Log In Button */}
         <Link
           href="/login"
-          className="inline-block rounded-lg bg-green-600 px-10 py-5 text-white text-lg font-semibold transition-colors hover:bg-green-500"
+          className="block w-full text-center rounded-lg bg-green-600 px-6 py-4 text-white text-lg font-semibold hover:bg-green-500 transition-all duration-200"
         >
           Log In
         </Link>
