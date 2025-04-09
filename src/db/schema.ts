@@ -12,8 +12,8 @@ import type { AdapterAccountType } from "next-auth/adapters"
 
 
 
-const connectionString = "postgres://postgres:postgres@localhost:5432/drizzle"
-const pool = postgres(connectionString, { max: 1 })
+//const connectionString = "postgres://postgres:postgres@localhost:5432/drizzle"
+const pool = postgres(process.env.POSTGRES_URL!, { max: 1 })
 
 export const db = drizzle(pool)
 
