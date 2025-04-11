@@ -1,6 +1,5 @@
 import './ui/global.css';
 import { noto_sans } from './ui/fonts';
-import ClientLayout from './ui/client-layout'; 
 
 export const metadata = {
   metadataBase: new URL('https://pulseout.vercel.app/'),
@@ -11,8 +10,8 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-    <body className={`${noto_sans.className} antialiased`}>
-        <ClientLayout>{children}</ClientLayout>
+      <body className={`${noto_sans.className} antialiased`}>
+        {children}
       </body>
     </html>
   );

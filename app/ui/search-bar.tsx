@@ -1,52 +1,53 @@
-// app/ui/musicgrid/search-bar.tsx
-'use client'; // This component needs client-side interactivity
+// app/ui/search-bar.tsx
+'use client';
 
+import { useEffect } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useDebouncedCallback } from 'use-debounce';
-import { Search } from 'lucide-react'; // Using lucide-react for icons
+import { Search } from 'lucide-react';
 
 export default function SearchBar({ placeholder }: { placeholder: string }) {
-  // Get current search parameters, pathname, and router instance
   const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter(); // Use replace to avoid adding entries to browser history for each keystroke
+  const pathname = usePathname(); // Get current pathname
+  const { push } = useRouter(); // Use push for navigation
 
-  // Debounced callback to update URL search parameters after user stops typing
+  // Debounced function to navigate to the search page
   const handleSearch = useDebouncedCallback((term: string) => {
-    console.log(`Searching... ${term}`); // Log search term (optional)
+    console.log(`Navigating to search page for: ${term}`);
+    const params = new URLSearchParams(); // Start fresh for search page query
 
-    // Create a new URLSearchParams object from the current search parameters
-    const params = new URLSearchParams(searchParams);
-
-    // Set page to 1 when search term changes (optional, if pagination is used)
-    // params.set('page', '1');
-
-    // Update the 'query' parameter if a term exists, otherwise delete it
     if (term) {
       params.set('query', term);
-    } else {
-      params.delete('query');
+      // Navigate to the dedicated search page with the query
+      push(`/musicgrid/search?${params.toString()}`);
+    } else if (pathname === '/musicgrid/search') {
+       // If the term is cleared *while on the search page*, remove the query param
+       // Or potentially navigate back or show a default state on the search page
+       push(`/musicgrid/search`); // Go to search page without query
     }
+    // If term is cleared on other pages, do nothing (don't navigate)
 
-    // Replace the current URL with the updated path and search parameters
-    // This triggers a re-render of the layout/page with the new search state
-    replace(`${pathname}?${params.toString()}`);
-  }, 300); // Debounce time: 300ms
+  }, 500); // Debounce time: 500ms
+
+  // Use defaultValue to reflect the query parameter IF we are on the search page
+  // Otherwise, it might be confusing if it retains the value on other pages.
+  // Alternatively, manage input value with useState if more control is needed.
+  const defaultValue = pathname === '/musicgrid/search'
+    ? searchParams.get('query')?.toString() ?? ''
+    : '';
 
   return (
     <div className="relative flex flex-1 flex-shrink-0">
-      {/* Input field for search */}
       <input
+        key={defaultValue} // Add key to reset input if defaultValue changes drastically (like navigating away/back)
         className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
         placeholder={placeholder}
-        // Update search on input change
         onChange={(e) => {
           handleSearch(e.target.value);
         }}
-        // Set default value from URL search parameters, ensuring it syncs on navigation
-        defaultValue={searchParams.get('query')?.toString()}
+        defaultValue={defaultValue} // Reflect query only on search page
+        suppressHydrationWarning={true}
       />
-      {/* Search icon */}
       <Search className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900 dark:text-gray-400 dark:peer-focus:text-gray-300" />
     </div>
   );

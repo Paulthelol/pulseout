@@ -8,7 +8,9 @@ import {
   integer,
   index, // Import index
   serial, // Import serial for auto-incrementing IDs if preferred for comments
-  uniqueIndex, // Import uniqueIndex for ensuring one like per user/song
+  uniqueIndex,
+  doublePrecision
+  // Import uniqueIndex for ensuring one like per user/song
   // import { jsonb } from "drizzle-orm/pg-core"; // Keep if needed elsewhere
 } from "drizzle-orm/pg-core"
 import postgres from "postgres"
@@ -113,6 +115,8 @@ export const songs = pgTable("song", {
     coverUrl: text("coverUrl"),
     spotifyUrl: text("spotifyUrl"),
     addedAt: timestamp("addedAt").defaultNow(),
+    trending_score: doublePrecision("trending_score").default(0.0).notNull(), // Score that decays
+    last_decayed_at: timestamp("last_decayed_at", { mode: "date" }), // Optional: Track last decay time
     // Note: likeCount and commentCount are omitted here for simplicity.
     // You would typically calculate these with queries when needed.
     // likeCount: integer("likeCount").default(0).notNull(),
@@ -121,6 +125,7 @@ export const songs = pgTable("song", {
      nameIdx: index("song_name_idx").on(song.name),
      artistIdx: index("song_artist_idx").on(song.artist),
      albumIdx: index("song_album_idx").on(song.album),
+     trendingScoreIdx: index("song_trending_score_idx").on(song.trending_score), // For ordering trending songs
   }));
 
 // --- NEW LIKES TABLE SCHEMA ---
