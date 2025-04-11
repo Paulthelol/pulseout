@@ -25,5 +25,5 @@ export async function authenticateSpotify(
 }
 
 export async function SignOut() {
-    await signOut();
+    await signOut({ redirectTo: '/login' });
 }
