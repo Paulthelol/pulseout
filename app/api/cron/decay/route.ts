@@ -1,52 +1,56 @@
 // app/api/cron/decay/route.ts
-import { db } from '@/src/db'; // Import your Drizzle instance
-import { songs } from '@/src/db/schema'; // Import the songs table schema
-import { sql, gt } from 'drizzle-orm'; // Import sql helper and greater than (gt) operator
+// *** Use drizzle from the vercel-postgres adapter ***
+import { drizzle } from 'drizzle-orm/vercel-postgres';
+import { sql as vercelSql } from '@vercel/postgres'; // Renamed to avoid conflict with drizzle sql helper
+// --- Remove the import of your potentially Node-specific db instance ---
+// import { db } from '@/src/db';
+import { songs } from '@/src/db/schema';
+import { sql, gt } from 'drizzle-orm'; // Keep drizzle's sql helper for query building
 import { NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
-
-// IMPORTANT: Ensure your `db` instance in src/db/index.ts uses an
-// edge-compatible driver if this runs on the edge runtime.
-// e.g., @vercel/postgres/driver, @neondatabase/serverless, drizzle-orm/postgres-proxy
-// Your current 'postgres' driver might work if Supabase pooler is HTTP-based,
-// but verify compatibility with Vercel Edge Functions.
 
 // Configure this route to run on the Edge runtime
 export const runtime = 'edge';
 // Prevent caching of this route
 export const dynamic = 'force-dynamic';
 
+// --- Create a Drizzle instance specifically for the Edge ---
+// It uses the Vercel Postgres SDK (`vercelSql`) which handles the connection pooling and is edge-compatible.
+// Ensure the POSTGRES_URL environment variable is set in your Vercel project settings.
+const edgeDb = drizzle(vercelSql);
 
-// Handler for the cron job (Vercel usually uses GET for simple triggers)
+
+// Handler for the cron job
 export async function GET(request: Request) {
-  noStore(); // Ensure this function doesn't cache responses
+  noStore();
 
-  // Optional: Secure your cron job (e.g., check a secret header/token)
-  // const authorization = request.headers.get('authorization');
-  // if (authorization !== `Bearer ${process.env.CRON_SECRET}`) {
-  //   return new NextResponse('Unauthorized', { status: 401 });
-  // }
+  // Optional: Secure your cron job
+  // ... (security check code) ...
 
   console.log('Running daily decay job for trending scores...');
 
   try {
-    // Execute the update. We don't need the specific result count here.
-    await db.update(songs)
+    // *** Use the edge-compatible edgeDb instance ***
+    const result = await edgeDb.update(songs)
       .set({
-        trending_score: sql`trending_score / 2.0`, // Use 2.0 for float division
-        // Optionally update last_decayed_at here if you added it
-        last_decayed_at: new Date(),
+        trending_score: sql`trending_score / 2.0`,
+        // last_decayed_at: new Date(), // Optional
       })
-      .where(gt(songs.trending_score, 0.01)); // Only decay scores above a small threshold
+      .where(gt(songs.trending_score, 0.01));
 
-    // Log success without rowCount
+    // Note: The Vercel Postgres driver might return different result metadata.
+    // It's safest to just confirm the query ran without error.
     console.log(`Decay job completed successfully.`);
 
-    // Return a success message without rowCount
     return NextResponse.json({ success: true, message: `Decay job executed.` });
 
   } catch (error) {
     console.error('Error running decay job:', error);
-    return new NextResponse('Internal Server Error during decay job.', { status: 500 });
+    // Ensure error is serializable for Edge functions
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error during decay job.';
+    return new NextResponse(JSON.stringify({ success: false, error: errorMessage }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

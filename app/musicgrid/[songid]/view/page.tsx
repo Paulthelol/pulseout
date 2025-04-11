@@ -7,19 +7,18 @@ import { ExternalLink } from 'lucide-react';
 import LikeButton from '@/app/ui/like-button';
 // import CommentSection from '@/app/ui/musicgrid/comment-section'; // Placeholder
 
+// --- Update the PageProps interface ---
 interface PageProps {
-  // The params prop itself might be a Promise in newer Next.js versions
-  // We'll handle awaiting it inside the component
-  params: {
-    songid: string;
-  };
+  // Define params as a Promise resolving to the expected object structure
+  params: Promise<{
+    songid: string; // Matches the dynamic segment [songid]
+  }>;
 }
 
 // Page remains async
 export default async function SongViewPage({ params }: PageProps) {
 
-  // --- Await the params object as recommended by Next.js docs ---
-  // You can either await the whole object or destructure after awaiting
+  // --- Await the params Promise as required ---
   const resolvedParams = await params;
   const songid = resolvedParams.songid;
   // Or directly: const { songid } = await params;
