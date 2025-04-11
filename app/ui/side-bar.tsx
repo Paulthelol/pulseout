@@ -18,7 +18,7 @@ export default function SideBar() {
         />
 
         <nav className={styles.navSection}>
-          <Link href="/trending"><span>Trending</span></Link>
+          <Link href="/musicgrid/trending"><span>Trending</span></Link>
           <Link href="#"><span>Genres</span></Link>
           <Link href="#"><span>Likes</span></Link>
         </nav>

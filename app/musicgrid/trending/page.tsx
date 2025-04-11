@@ -1,9 +1,59 @@
 'use client';
-import Link from 'next/link'; 
+import Link from 'next/link';
+import Image from 'next/image';
 
 const trendingSongs = [
   {
     id: 1,
+    title: 'Random song',
+    image: '',
+    likes: 1200,
+    comments: 56,
+  },
+  {
+    id: 2,
+    title: 'Random song',
+    image: '',
+    likes: 1200,
+    comments: 56,
+  },
+  {
+    id: 3,
+    title: 'Random song',
+    image: '',
+    likes: 1200,
+    comments: 56,
+  },
+  {
+    id: 4,
+    title: 'Random song',
+    image: '',
+    likes: 1200,
+    comments: 56,
+  },
+  {
+    id: 5,
+    title: 'Random song',
+    image: '',
+    likes: 1200,
+    comments: 56,
+  },
+  {
+    id: 6,
+    title: 'Random song',
+    image: '',
+    likes: 1200,
+    comments: 56,
+  },
+  {
+    id: 7,
+    title: 'Random song',
+    image: '',
+    likes: 1200,
+    comments: 56,
+  },
+  {
+    id: 8,
     title: 'Random song',
     image: '',
     likes: 1200,
@@ -23,10 +73,12 @@ export default function TrendingPage() {
               key={song.id}
               className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden"
             >
-              <img
-                src={song.image || 'https://via.placeholder.com/150'}
+              <Image
+                width={100}
+                height={100}
+                src={song.image || '/covers/placeholder_cover.jpg'}
                 alt={song.title}
-                className="w-full h-32 object-cover rounded-t-xl"
+                className="w-full aspect-square rounded-t-xl object-contain"
               />
               <div className="p-4">
                 <h2 className="text-sm font-semibold truncate mb-2">

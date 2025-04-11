@@ -11,7 +11,7 @@ export default function ViewSong() {
           {/* Song Picture */}
           <div className="bg-gray-100 rounded-2xl shadow-md p-4">
             <Image
-              src="https://via.placeholder.com/400x300"
+              src="/covers/placeholder_cover.jpg"
               alt="Song Cover"
               width={400}
               height={300}

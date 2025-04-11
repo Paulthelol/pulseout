@@ -18,7 +18,7 @@ export const authConfig = {
         return isLoggedIn;
       } else if (isOnLoginpage) {
         if (isLoggedIn) {
-          return Response.redirect(new URL('/musicgrid', nextUrl));
+          return Response.redirect(new URL('/musicgrid/trending', nextUrl));
         }
       } else if (!isLoggedIn) {
         return isLoggedIn;
