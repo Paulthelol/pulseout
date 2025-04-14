@@ -8,7 +8,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "cd node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt && pnpm install"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.8.0",
@@ -21,6 +22,7 @@
     "@types/react-dom": "^19.1.2",
     "@vercel/postgres": "^0.10.0",
     "autoprefixer": "10.4.16",
+    "bcrypt": "^5.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.7",
