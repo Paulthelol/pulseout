@@ -31,7 +31,6 @@ export default function Layout({
                 {/* Top Bar with Search */}
                 <div className="mb-6">
                     {/* Use Suspense for the SearchBar in case it depends on async operations or complex hooks */}
-                    {/* Although SearchBar is 'use client', wrapping in Suspense is good practice if needed */}
                     <Suspense fallback={<SearchBarSkeleton />}>
                        <SearchBar placeholder="Search music..." />
                     </Suspense>
@@ -50,8 +49,3 @@ export default function Layout({
         </div>
     );
 }
-
-// Note: Ensure your SideNav component links work correctly.
-// If clicking a SideNav link (e.g., "Trending") should clear the search,
-// the links should navigate to the base path (e.g., "/musicgrid/trending")
-// without the "?query=..." parameter.

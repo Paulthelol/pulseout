@@ -1,5 +1,4 @@
-// app/musicgrid/search/page.tsx
-'use client'; // This page needs client-side hooks for search params and state
+'use client';
 
 import React, { useState, useEffect, Suspense, useTransition } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter

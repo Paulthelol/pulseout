@@ -1,4 +1,3 @@
-// app/musicgrid/likes/page.tsx
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -73,10 +72,9 @@ export default function LikedSongsPage() {
   // Initial load effect (no change)
   useEffect(() => {
     loadSongs(0, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on mount
 
-  // Setup Intersection Observer effect (no change needed here, but ensure deps are right)
+  // Setup Intersection Observer effect
    useEffect(() => {
     if (isInitialLoading || isLoading || !hasMore) {
         if (observerRef.current) observerRef.current.disconnect();
