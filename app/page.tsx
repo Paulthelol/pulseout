@@ -1,21 +1,32 @@
-import Link from "next/link"
+'use client';
+
+import Image from 'next/image';
+import Link from 'next/link';
+
 export default function WelcomePage() {
+  return (
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-r from-purple-500 to-blue-400">
+      <div className="bg-white/20 backdrop-blur-md px-10 py-12 rounded-xl shadow-lg space-y-6 max-w-md mx-auto text-center">
+        {/* PulseOut Logo */}
+        <Image
+          src="/logo.png"
+          alt="PulseOut Logo"
+          width={120}
+          height={120}
+          className="mx-auto"
+        />
 
-    return (
-        <main className="flex items-center justify-center">
-            <div>
-                <div>
-                    <p>Welcome Page</p>
-                </div>
-                <Link
-                    href="/login"
-                    className="mt-4 rounded-md bg-green-600 px-4 py-2 text-sm text-white transition-colors hover:bg-green-500"
-                >
-                    Login
-                </Link>
-            </div>
+        {/* Welcome Text */}
+        <h1 className="text-white text-2xl font-semibold">Welcome to PulseOut!</h1>
 
-        </main>
-
-    )
+        {/* Log In Button */}
+        <Link
+          href="/login"
+          className="block w-full text-center rounded-lg bg-green-600 px-6 py-4 text-white text-lg font-semibold hover:bg-green-500 transition-all duration-200"
+        >
+          Log In
+        </Link>
+      </div>
+    </main>
+  );
 }

@@ -1,21 +1,18 @@
-import '@/app/ui/global.css'
-import {noto_sans} from '@/app/ui/fonts'
+import './ui/global.css';
+import { noto_sans } from './ui/fonts';
 
 export const metadata = {
   metadataBase: new URL('https://pulseout.vercel.app/'),
   title: 'Welcome to PulseOut',
-  description:
-    'A new social music platform for music lovers!',
-}
+  description: 'A new social music platform for music lovers!',
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${noto_sans.className} antialiased`}>{children}</body>
+      <body className={`${noto_sans.className} antialiased`}>
+        {children}
+      </body>
     </html>
-  )
+  );
 }
