@@ -1,4 +1,3 @@
-// app/ui/musicgrid/like-button.tsx
 'use client';
 
 import React, { useState, useTransition } from 'react';
@@ -38,10 +37,6 @@ export default function LikeButton({ songId, initialLiked, initialLikeCount }: L
           setIsLiked(previousLiked);
           setLikeCount(previousCount);
         } else {
-          // Optionally, sync state with the server response if needed,
-          // though revalidation should handle the count display elsewhere.
-          // setIsLiked(result.liked ?? previousLiked);
-          // setLikeCount(result.likeCount ?? previousCount);
           console.log("Like action successful:", result);
         }
       } catch (err) {

@@ -1,9 +1,5 @@
-// app/api/cron/decay/route.ts
-// *** Use drizzle from the vercel-postgres adapter ***
 import { drizzle } from 'drizzle-orm/vercel-postgres';
 import { sql as vercelSql } from '@vercel/postgres'; // Renamed to avoid conflict with drizzle sql helper
-// --- Remove the import of your potentially Node-specific db instance ---
-// import { db } from '@/src/db';
 import { songs } from '@/src/db/schema';
 import { sql, gt } from 'drizzle-orm'; // Keep drizzle's sql helper for query building
 import { NextResponse } from 'next/server';
@@ -24,9 +20,6 @@ const edgeDb = drizzle(vercelSql);
 export async function GET(request: Request) {
   noStore();
 
-  // Optional: Secure your cron job
-  // ... (security check code) ...
-
   console.log('Running daily decay job for trending scores...');
 
   try {
@@ -38,8 +31,6 @@ export async function GET(request: Request) {
       })
       .where(gt(songs.trending_score, 0.01));
 
-    // Note: The Vercel Postgres driver might return different result metadata.
-    // It's safest to just confirm the query ran without error.
     console.log(`Decay job completed successfully.`);
 
     return NextResponse.json({ success: true, message: `Decay job executed.` });

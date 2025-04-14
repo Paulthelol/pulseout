@@ -1,4 +1,3 @@
-// app/ui/musicgrid/search-results.tsx
 import { searchSpotifyTracks } from '@/lib/spotify';
 import TrackCard from '@/app/ui/track-card';
 import { Suspense } from 'react';
@@ -26,7 +25,7 @@ interface TrackItem {
 }
 
 // Define the expected structure of the search results from searchSpotifyTracks
-// IMPORTANT: Verify this matches the actual return type of searchSpotifyTracks
+// Ensure this matches the actual return type of searchSpotifyTracks
 interface SearchResultsData {
     tracks: {
         items: TrackItem[];

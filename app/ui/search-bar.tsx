@@ -1,4 +1,3 @@
-// app/ui/search-bar.tsx
 'use client';
 
 import { useEffect } from 'react';
@@ -29,9 +28,6 @@ export default function SearchBar({ placeholder }: { placeholder: string }) {
 
   }, 500); // Debounce time: 500ms
 
-  // Use defaultValue to reflect the query parameter IF we are on the search page
-  // Otherwise, it might be confusing if it retains the value on other pages.
-  // Alternatively, manage input value with useState if more control is needed.
   const defaultValue = pathname === '/musicgrid/search'
     ? searchParams.get('query')?.toString() ?? ''
     : '';
