@@ -28,16 +28,5 @@ export const authConfig = {
       }
       return true;
     },
-    async redirect({ url, baseUrl }) {
-      console.log("@@@ redirect", url, baseUrl);
-
-      baseUrl = "https://localhost.maxhogan.dev:3000/";
-
-      // Allows relative callback URLs
-      if (url.startsWith("/")) return `${baseUrl}${url}`
-      // Allows callback URLs on the same origin
-      else if (new URL(url).origin === baseUrl) return url
-      return baseUrl
-    }
   },
 } satisfies NextAuthConfig;
