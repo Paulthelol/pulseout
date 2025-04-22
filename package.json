@@ -5,7 +5,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack -H localhost.maxhogan.dev --experimental-https",
+    "dev": "next dev --turbopack -H localhost.pulseout.dev --experimental-https",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
