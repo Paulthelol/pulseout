@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const result = await edgeDb.update(songs)
       .set({
         trending_score: sql`trending_score / 2.0`,
-        // last_decayed_at: new Date(), // Optional
+        last_decayed_at: new Date(),
       })
       .where(gt(songs.trending_score, 0.01));
 
