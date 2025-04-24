@@ -1,28 +1,35 @@
 'use client'; // This component uses hooks, so it must be a Client Component
 
 import React, { useState, useEffect, useOptimistic, useRef, useTransition, useCallback } from 'react';
-// Import Icons (assuming you have lucide-react installed)
-import { Heart, MessageSquare, ChevronDown, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
+// Import Icons
+import { Heart, MessageSquare, ChevronDown, Loader2, Trash2 } from 'lucide-react';
 
 // --- Import Server Actions & Types ---
-// Adjust the import path based on your project structure
 import { fetchComments, addComment, toggleCommentLike, deleteComment } from '@/lib/actions';
-// Import the shared type definition for a comment with details
-import type { CommentWithDetails } from '@/lib/actions'; // Adjust path
+// Import the shared type definition
+import type { CommentWithDetails as BaseCommentWithDetails } from '@/lib/actions';
 
 // --- Types ---
-// Define the User type (or import from a shared types file)
 type User = {
   id: string;
   name: string | null;
   image?: string | null;
 };
 
+// Extend the base type locally to include the optimistic flag
+// *** This interface now includes the optional optimistic fields ***
+interface CommentWithDetails extends BaseCommentWithDetails {
+  isOptimistic?: boolean;
+  optimisticId?: string; // Keep track of the original optimistic ID for replacement
+}
+
+
 // --- Constants ---
 const COMMENTS_PER_PAGE = 10;
-const REFRESH_DELAY = 500; // Delay in ms before refreshing list after add/delete
+const REFRESH_DELAY = 500; // Delay for refreshing list after top-level add/delete
 
-// --- Helper Functions ---
+// --- Helper Functions (Keep As Is) ---
+// ... (getRandomBgColor, formatTimestamp) ...
 const nameToColorCache: Record<string, string> = {};
 const tailwindColors = [
   'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500',
@@ -31,7 +38,6 @@ const tailwindColors = [
   'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 'bg-pink-500',
   'bg-rose-500',
 ];
-
 const getRandomBgColor = (name: string = '?'): string => {
   const initial = name.charAt(0).toUpperCase();
   if (nameToColorCache[initial]) return nameToColorCache[initial];
@@ -41,8 +47,10 @@ const getRandomBgColor = (name: string = '?'): string => {
   nameToColorCache[initial] = color;
   return color;
 };
-
 const formatTimestamp = (date: Date): string => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return 'Sending...'; // Or handle appropriately
+  }
   const now = new Date();
   const diffInMs = now.getTime() - date.getTime();
   const oneDayInMs = 24 * 60 * 60 * 1000;
@@ -63,7 +71,7 @@ const formatTimestamp = (date: Date): string => {
   }
 };
 
-// --- Avatar Placeholder Component ---
+// --- Avatar Placeholder Component (Keep As Is) ---
 interface AvatarPlaceholderProps { username: string | null | undefined; }
 const AvatarPlaceholder: React.FC<AvatarPlaceholderProps> = ({ username }) => {
   const nameStr = username || 'Anonymous';
@@ -76,53 +84,61 @@ const AvatarPlaceholder: React.FC<AvatarPlaceholderProps> = ({ username }) => {
   );
 };
 
-// --- Like Button Component ---
+// --- Like Button Component (Keep As Is - with minor ID check improvement) ---
+// ... (LikeButton component remains the same) ...
 interface LikeButtonProps {
   commentId: string;
   initialLikes: number;
   initialLiked: boolean;
   disabled?: boolean;
 }
-
 export const LikeButton: React.FC<LikeButtonProps> = ({
   commentId,
   initialLikes,
   initialLiked,
   disabled,
 }) => {
-  // Local state for instant UI feedback
   const [likes, setLikes] = useState(initialLikes);
   const [liked, setLiked] = useState(initialLiked);
   const [isPending, startTransition] = useTransition();
+  // Determine if the ID is likely temporary (optimistic)
+  // Use a simpler check: does it look like a UUID?
+  const isOptimisticId = !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(commentId);
+
+  useEffect(() => {
+    // Only sync with props if the comment ID is real (not optimistic)
+    if (!isOptimisticId) {
+      setLikes(initialLikes);
+    }
+  }, [initialLikes, isOptimisticId]); // Depend on isOptimisticId
+
+  useEffect(() => {
+    if (!isOptimisticId) {
+      setLiked(initialLiked);
+    }
+  }, [initialLiked, isOptimisticId]); // Depend on isOptimisticId
+
 
   const handleClick = () => {
-    if (disabled || isPending) return;
+    // Disable liking optimistic comments
+    if (disabled || isPending || isOptimisticId) return;
 
-    // Compute our new client side state
     const nextLiked = !liked;
     const nextLikes = nextLiked ? likes + 1 : likes - 1;
 
-    // 1) Update UI immediately
     setLiked(nextLiked);
     setLikes(nextLikes);
 
-    // 2) Fire off server action in a transition
     startTransition(async () => {
       try {
         const { success, newLikes, liked: serverLiked } = await toggleCommentLike(commentId);
-
-        if (success && typeof newLikes === "number") {
-          // 3a) Optionally re-sync with server truth
-          setLiked(serverLiked!);
-          setLikes(newLikes);
-        } else {
-          // 3b) Roll back if the action failed
+        if (!success) { // Roll back on explicit failure
           setLiked(liked);
           setLikes(likes);
           console.error("toggleCommentLike failed");
         }
-      } catch (err) {
-        // 3c) Roll back on network/error
+        // No need to re-sync on success if parent handles refresh/update
+      } catch (err) { // Roll back on error
         setLiked(liked);
         setLikes(likes);
         console.error("Error in toggleCommentLike:", err);
@@ -134,25 +150,21 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
   const enabled = "text-gray-500 hover:text-red-600 hover:bg-red-50";
   const disabledCls = "text-gray-400 cursor-not-allowed";
   const likedCls = "text-red-600";
+  const finalDisabled = disabled || isPending || isOptimisticId;
 
   return (
     <button
       type="button"
       onClick={handleClick}
-      disabled={disabled || isPending}
-      className={`${base} ${disabled ? disabledCls : enabled} ${liked ? likedCls : ""}`}
+      disabled={finalDisabled}
+      className={`${base} ${finalDisabled ? disabledCls : enabled} ${liked ? likedCls : ""}`}
       aria-label={liked ? "Unlike comment" : "Like comment"}
     >
       <Heart
-        className={`h-4 w-4 transition-colors duration-150 ${
-          liked
-            ? disabled
-              ? "fill-gray-400 text-gray-400"
-              : "fill-red-500 text-red-500"
-            : disabled
-            ? "text-gray-400"
-            : "text-gray-500 group-hover:text-red-500"
-        }`}
+        className={`h-4 w-4 transition-colors duration-150 ${liked
+            ? finalDisabled ? "fill-gray-400 text-gray-400" : "fill-red-500 text-red-500"
+            : finalDisabled ? "text-gray-400" : "text-gray-500 group-hover:text-red-500"
+          }`}
       />
       <span>{likes}</span>
       {isPending && <Loader2 className="ml-1 h-3 w-3 animate-spin" />}
@@ -160,17 +172,32 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
   );
 };
 
-// --- Comment Input Component ---
+// --- Comment Input Component (Keep As Is) ---
+// ... (CommentInput component remains the same) ...
 interface CommentInputProps {
   songId: string;
   parentId?: string | null;
-  onSubmitSuccess: () => void;
+  onSubmitSuccess?: () => void; // For top-level refresh trigger
+  onOptimisticReplyAdded?: (optimisticReply: CommentWithDetails) => void; // For optimistic replies
+  onServerConfirm?: (optimisticId: string, confirmedComment: CommentWithDetails) => void; // Still needed for replies
+  onServerError?: (optimisticId: string) => void; // Still needed for replies
   onCancel?: () => void;
   currentUser: User | null;
   placeholder?: string;
   autoFocus?: boolean;
 }
-const CommentInput: React.FC<CommentInputProps> = ({ songId, parentId = null, onSubmitSuccess, onCancel, currentUser, placeholder = "Add a comment...", autoFocus = false }) => {
+const CommentInput: React.FC<CommentInputProps> = ({
+  songId,
+  parentId = null,
+  onSubmitSuccess,
+  onOptimisticReplyAdded,
+  onServerConfirm,
+  onServerError,
+  onCancel,
+  currentUser,
+  placeholder = "Add a comment...",
+  autoFocus = false
+}) => {
   const formRef = useRef<HTMLFormElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const [isPending, startTransition] = useTransition();
@@ -178,28 +205,80 @@ const CommentInput: React.FC<CommentInputProps> = ({ songId, parentId = null, on
 
   useEffect(() => { if (autoFocus && textAreaRef.current) textAreaRef.current.focus(); }, [autoFocus]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const triggerSubmit = () => {
     if (!currentUser) { setError("Please log in to comment."); return; }
-    const formData = new FormData(event.currentTarget);
+    if (!formRef.current) return;
+
+    const formData = new FormData(formRef.current);
     const content = formData.get('content') as string;
     if (!content?.trim()) { setError("Comment cannot be empty."); textAreaRef.current?.focus(); return; }
 
+    // *** Explicitly type the optimistic comment object ***
+    const optimisticId = crypto.randomUUID();
+    const optimisticComment: CommentWithDetails = {
+      id: optimisticId, // Temporary ID
+      optimisticId: optimisticId, // Store temporary ID separately
+      content: content.trim(),
+      createdAt: new Date(),
+      parentId: parentId,
+      songId: songId,
+      user: {
+        id: currentUser.id,
+        name: currentUser.name,
+        image: currentUser.image ?? null,
+      },
+      likes: 0,
+      currentUserLiked: false,
+      replies: [],
+      isOptimistic: true, // Mark as optimistic
+    };
+
+    // If it's a reply, add optimistically
+    if (parentId && onOptimisticReplyAdded) {
+      onOptimisticReplyAdded(optimisticComment);
+    }
+
+    formRef.current?.reset();
+    setError(null);
+
     startTransition(async () => {
-      setError(null);
       try {
         const result = await addComment(formData);
-        if (result.success) {
-          formRef.current?.reset();
-          onSubmitSuccess(); // Still need refresh for adds
+        if (result.success && result.newComment) {
+          console.log(`Server confirmed comment ${result.newComment.id}`);
+          if (parentId && onServerConfirm) {
+            onServerConfirm(optimisticId, result.newComment);
+          } else if (!parentId && onSubmitSuccess) {
+            onSubmitSuccess(); // Trigger refresh for top-level
+          }
         } else {
           setError(result.error || "Failed to post comment.");
+          if (parentId && onServerError) {
+            onServerError(optimisticId); // Remove optimistic reply
+          }
         }
       } catch (err) {
         console.error("Error calling addComment:", err);
         setError("An unexpected error occurred.");
+        if (parentId && onServerError) {
+          onServerError(optimisticId); // Remove optimistic reply
+        }
       }
     });
+  };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    triggerSubmit();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      if (!isPending) {
+        triggerSubmit();
+      }
+    }
   };
 
   return (
@@ -223,6 +302,7 @@ const CommentInput: React.FC<CommentInputProps> = ({ songId, parentId = null, on
           required
           disabled={isPending || !currentUser}
           aria-label={placeholder}
+          onKeyDown={handleKeyDown}
         />
         {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
         <div className="mt-2 flex items-center justify-end space-x-2">
@@ -249,7 +329,8 @@ const CommentInput: React.FC<CommentInputProps> = ({ songId, parentId = null, on
   );
 };
 
-// --- Sort Dropdown Component ---
+// --- Sort Dropdown Component (Keep As Is) ---
+// ... (SortDropdown component remains the same) ...
 interface SortDropdownProps { currentSort: 'top' | 'recent'; onSortChange: (newSort: 'top' | 'recent') => void; }
 const SortDropdown: React.FC<SortDropdownProps> = ({ currentSort, onSortChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -302,45 +383,78 @@ const SortDropdown: React.FC<SortDropdownProps> = ({ currentSort, onSortChange }
   );
 };
 
-// --- Comment Component ---
+// --- Comment Component (MODIFIED) ---
 interface CommentProps {
+  // *** Use the extended type for the comment prop ***
   comment: CommentWithDetails;
   songId: string;
   currentUser: User | null;
   level?: number;
-  onCommentDeleted: (commentId: string) => void;
-  // Removed onLikeToggled callback prop
+  onCommentDeleted: (commentId: string, parentId: string | null) => void;
+  onReplyConfirmed: (optimisticId: string, confirmedComment: CommentWithDetails) => void;
+  onReplyError: (optimisticId: string) => void;
+  refreshTopLevelList: () => void;
 }
-const Comment: React.FC<CommentProps> = ({ comment, songId, currentUser, level = 0, onCommentDeleted }) => {
+const Comment: React.FC<CommentProps> = ({
+  comment,
+  songId,
+  currentUser,
+  level = 0,
+  onCommentDeleted,
+  onReplyConfirmed,
+  onReplyError,
+  refreshTopLevelList
+}) => {
   const [showReplyInput, setShowReplyInput] = useState(false);
+  // *** Use the extended type for the state ***
   const [visibleReplies, setVisibleReplies] = useState<CommentWithDetails[]>(comment.replies || []);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [_, startDeleteTransition] = useTransition();
 
-  const totalReplyCount = comment.replyCount || 0;
-  const hasMoreReplies = visibleReplies.length < totalReplyCount;
-  const isCommentOwner = currentUser?.id === comment.user.id;
+  useEffect(() => {
+    if (!comment.isOptimistic) {
+      setVisibleReplies(comment.replies || []);
+    }
+  }, [comment.replies, comment.isOptimistic]);
 
-  const handleReplySuccess = () => {
+  const isCommentOwner = currentUser?.id === comment.user.id;
+  // *** Access the property safely ***
+  const isOptimisticComment = comment.isOptimistic === true;
+
+  // Handler for adding optimistic reply LOCALLY
+  const handleOptimisticReplyAdd = (optimisticReply: CommentWithDetails) => {
     setShowReplyInput(false);
-    // TODO: Potentially refresh *only* replies for this comment if needed
+    setVisibleReplies(prevReplies => [...prevReplies, optimisticReply].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()));
   };
 
-  const handleLoadMoreReplies = async () => {
-    console.log("TODO: Load more replies for comment:", comment.id);
-    // Implement fetchReplies server action
+  // Handler for confirming/replacing optimistic reply LOCALLY
+  const handleReplyConfirmation = (optimisticId: string, confirmedComment: CommentWithDetails) => {
+    setVisibleReplies(prevReplies =>
+      prevReplies.map(reply =>
+        // *** Access optimisticId safely ***
+        reply.optimisticId === optimisticId ? { ...confirmedComment, isOptimistic: false } : reply
+      ).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    );
+    onReplyConfirmed(optimisticId, confirmedComment); // Bubble up
+  };
+
+  // Handler for removing optimistic reply LOCALLY on server error
+  const handleReplyServerError = (optimisticId: string) => {
+    // *** Access optimisticId safely ***
+    setVisibleReplies(prevReplies => prevReplies.filter(reply => reply.optimisticId !== optimisticId));
+    onReplyError(optimisticId); // Bubble up
   };
 
   const handleDelete = () => {
-    if (!isCommentOwner || isDeleting) return;
+    if (!isCommentOwner || isDeleting || isOptimisticComment) return;
     startDeleteTransition(async () => {
       setIsDeleting(true);
       setDeleteError(null);
       try {
         const result = await deleteComment(comment.id);
         if (result.success) {
-          onCommentDeleted(comment.id); // Still need refresh for deletes
+          onCommentDeleted(comment.id, comment.parentId);
         } else {
           setDeleteError(result.error || "Failed to delete comment.");
           setIsDeleting(false);
@@ -352,44 +466,62 @@ const Comment: React.FC<CommentProps> = ({ comment, songId, currentUser, level =
     });
   };
 
+  // --- Callbacks passed down to nested comments ---
+  const handleNestedReplyConfirmed = useCallback((optimisticId: string, confirmedComment: CommentWithDetails) => {
+    onReplyConfirmed(optimisticId, confirmedComment);
+  }, [onReplyConfirmed]);
+
+  const handleNestedReplyError = useCallback((optimisticId: string) => {
+    onReplyError(optimisticId);
+  }, [onReplyError]);
+
+  const handleNestedCommentDeleted = useCallback((deletedCommentId: string, parentId: string | null) => {
+    setVisibleReplies(prevReplies => prevReplies.filter(reply => reply.id !== deletedCommentId));
+    onCommentDeleted(deletedCommentId, parentId);
+  }, [onCommentDeleted]);
+
+
   const indentationClass = level > 0 ? `ml-4 sm:ml-6` : '';
+  const optimisticClass = isOptimisticComment ? 'opacity-60' : '';
 
   return (
-    <div className={`flex space-x-2 sm:space-x-3 ${indentationClass}`}>
+    // *** Use optimisticId in key if present ***
+    <div className={`flex space-x-2 sm:space-x-3 ${indentationClass} ${optimisticClass}`} key={comment.optimisticId || comment.id}>
       <div className="flex-shrink-0 pt-1"><AvatarPlaceholder username={comment.user.name} /></div>
       <div className="flex-1 min-w-0 relative group">
-        {isCommentOwner && (
+        {isCommentOwner && !isOptimisticComment && (
           <button
             type="button"
             onClick={handleDelete}
             disabled={isDeleting}
             className={`absolute top-0 right-0 p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
-                       opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed`} // Always visible by default, hidden on md+ screens until group hover
+                         opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed`}
             aria-label="Delete comment"
           >
             {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
           </button>
         )}
-        <div className="flex items-baseline space-x-1.5 mb-1 flex-wrap pr-8 md:pr-6"> {/* Increase padding slightly on mobile for always-visible icon */}
+        <div className="flex items-baseline space-x-1.5 mb-1 flex-wrap pr-8 md:pr-6">
           <span className="font-semibold text-sm text-gray-800 break-words">{comment.user.name || 'Anonymous'}</span>
           <span className="text-xs text-gray-400">·</span>
-          <span className="text-xs text-gray-500 flex-shrink-0">{formatTimestamp(comment.createdAt)}</span>
+          <span className="text-xs text-gray-500 flex-shrink-0">
+            {isOptimisticComment ? 'Sending...' : formatTimestamp(comment.createdAt)}
+          </span>
         </div>
         <p className="text-sm text-gray-700 mb-1.5 whitespace-pre-wrap break-words">{comment.content}</p>
         {deleteError && <p className="text-red-500 text-xs mt-1">{deleteError}</p>}
         <div className="flex items-center space-x-2">
-          {/* LikeButton no longer needs the callback */}
           <LikeButton
             commentId={comment.id}
             initialLikes={comment.likes}
             initialLiked={comment.currentUserLiked}
-            disabled={!currentUser}
+            disabled={!currentUser || isOptimisticComment}
           />
           <button
             type="button"
             onClick={() => setShowReplyInput(!showReplyInput)}
-            disabled={!currentUser}
-            className={`inline-flex items-center space-x-1 px-1.5 py-1 h-auto rounded-md group transition-colors duration-150 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${!currentUser ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:bg-blue-50 hover:text-blue-600'}`}
+            disabled={!currentUser || isOptimisticComment}
+            className={`inline-flex items-center space-x-1 px-1.5 py-1 h-auto rounded-md group transition-colors duration-150 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${!currentUser || isOptimisticComment ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:bg-blue-50 hover:text-blue-600'}`}
             aria-label="Reply to comment">
             <MessageSquare className="h-4 w-4" /> <span className="text-xs font-medium">Reply</span>
           </button>
@@ -399,7 +531,9 @@ const Comment: React.FC<CommentProps> = ({ comment, songId, currentUser, level =
             <CommentInput
               songId={songId}
               parentId={comment.id}
-              onSubmitSuccess={handleReplySuccess}
+              onOptimisticReplyAdded={handleOptimisticReplyAdd}
+              onServerConfirm={handleReplyConfirmation}
+              onServerError={handleReplyServerError}
               onCancel={() => setShowReplyInput(false)}
               currentUser={currentUser}
               placeholder={`Replying to ${comment.user.name || 'Anonymous'}...`}
@@ -407,43 +541,50 @@ const Comment: React.FC<CommentProps> = ({ comment, songId, currentUser, level =
             />
           </div>
         )}
+        {/* Render replies using the local state */}
         {visibleReplies.length > 0 && (
           <div className="mt-3 space-y-3 border-l-2 border-gray-100 pl-3 sm:pl-4">
-            {visibleReplies.map((reply) => (
+            {/* *** Ensure reply uses the extended type *** */}
+            {visibleReplies.map((reply: CommentWithDetails) => (
               <Comment
-                key={reply.id}
+                key={reply.optimisticId || reply.id} // Use optimisticId in key
                 comment={reply}
                 songId={songId}
                 currentUser={currentUser}
                 level={level + 1}
-                onCommentDeleted={onCommentDeleted}
-              // No longer passing onLikeToggled down
+                onCommentDeleted={handleNestedCommentDeleted}
+                onReplyConfirmed={handleNestedReplyConfirmed}
+                onReplyError={handleNestedReplyError}
+                refreshTopLevelList={refreshTopLevelList}
               />
             ))}
-            {hasMoreReplies && (
-              <button type="button" onClick={handleLoadMoreReplies} className="inline-flex items-center text-blue-600 hover:text-blue-700 text-xs font-medium px-0 h-auto focus:outline-none">
-                <ChevronDown className="h-3 w-3 mr-1" /> View more replies ({totalReplyCount - visibleReplies.length} remaining)
-              </button>
-            )}
           </div>
-        )}
-        {visibleReplies.length === 0 && totalReplyCount > 0 && (
-          <button type="button" onClick={handleLoadMoreReplies} className="inline-flex items-center text-blue-600 hover:text-blue-700 text-xs font-medium px-0 h-auto mt-1 focus:outline-none">
-            <ChevronDown className="h-3 w-3 mr-1" /> View {totalReplyCount} {totalReplyCount > 1 ? 'replies' : 'reply'}
-          </button>
         )}
       </div>
     </div>
   );
 };
 
-// --- Main Comment Section Component ---
+
+// --- Main Comment Section Component (MODIFIED) ---
 interface CommentSectionProps {
   songId: string;
   currentUser: User | null;
 }
 const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) => {
-  const [comments, setComments] = useState<CommentWithDetails[]>([]);
+  // *** Use the extended type for state ***
+  const [actualComments, setActualComments] = useState<CommentWithDetails[]>([]);
+  // useOptimistic hook - ONLY for top-level deletes now
+  const [optimisticComments, setOptimisticComments] = useOptimistic<CommentWithDetails[], { action: 'delete'; comment: { id: string } }>(
+    actualComments,
+    (state, { action, comment }) => {
+      if (action === 'delete') {
+        return state.filter((c) => c.id !== comment.id);
+      }
+      return state;
+    }
+  );
+
   const [sortBy, setSortBy] = useState<'top' | 'recent'>('top');
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -452,22 +593,21 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPendingSort, startTransitionSort] = useTransition();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isPendingOptimistic, startOptimisticTransition] = useTransition();
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const isLoadingMoreRef = useRef(isLoadingMore);
   const hasMoreRef = useRef(hasMore);
   const offsetRef = useRef(offset);
-  const isRefreshingRef = useRef(isRefreshing);
 
   useEffect(() => { isLoadingMoreRef.current = isLoadingMore; }, [isLoadingMore]);
   useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
   useEffect(() => { offsetRef.current = offset; }, [offset]);
-  useEffect(() => { isRefreshingRef.current = isRefreshing; }, [isRefreshing]);
 
   // Memoized function to load comments
   const loadComments = useCallback(async (loadMore = false) => {
+    // ... (loadComments implementation remains the same) ...
     const currentLoadingMore = isLoadingMoreRef.current;
     const currentHasMore = hasMoreRef.current;
     const currentOffset = loadMore ? offsetRef.current : 0;
@@ -487,24 +627,27 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
       });
       console.log(`Fetched comments: count=${result.comments.length}, hasMore=${result.hasMore}, total=${result.totalCount}`);
 
-      if (!loadMore) {
-        setComments(result.comments);
-        setOffset(result.comments.length);
-      } else {
-        setComments(prev => {
+      // *** Ensure fetched comments conform to extended type ***
+      const fetchedCommentsTyped: CommentWithDetails[] = result.comments.map(c => ({ ...c }));
+
+      setActualComments(prev => {
+        if (loadMore) {
           const existingIds = new Set(prev.map(c => c.id));
-          const newComments = result.comments.filter(c => !existingIds.has(c.id));
+          const newComments = fetchedCommentsTyped.filter(c => !existingIds.has(c.id));
           return [...prev, ...newComments];
-        });
-        setOffset(prevOffset => prevOffset + result.comments.length);
-      }
+        } else {
+          return fetchedCommentsTyped;
+        }
+      });
+
+      setOffset(currentOffset + result.comments.length);
       setHasMore(result.hasMore);
       setTotalCount(result.totalCount);
 
     } catch (err) {
       console.error("Error in loadComments:", err);
       setError("Could not load comments. Please try again later.");
-      setComments([]);
+      setActualComments([]);
       setOffset(0);
       setHasMore(false);
       setTotalCount(0);
@@ -512,38 +655,27 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
       if (loadMore) setIsLoadingMore(false);
       else setIsLoadingInitial(false);
     }
-  }, [songId, sortBy]); // Stable dependencies
+  }, [songId, sortBy]);
 
-  // --- Function to reload the first page of comments (for add/delete) ---
+  // Function to reload the first page
   const refreshCommentList = useCallback(() => {
-    if (isRefreshingRef.current) {
-      console.log("Refresh skipped: Already refreshing.");
-      return;
-    }
-    console.log("Refreshing comment list (add/delete)...");
-    setIsRefreshing(true);
-    setComments([]);
+    console.log("Refreshing comment list...");
     setOffset(0);
     setHasMore(true);
     setError(null);
-    loadComments(false).finally(() => {
-      setIsRefreshing(false);
-      console.log("Refresh complete.");
-    });
-  }, [loadComments]); // Depends on stable loadComments
+    loadComments(false);
+  }, [loadComments]);
 
   // Effect for initial load and reacting to songId/sortBy changes
   useEffect(() => {
     console.log(`Effect triggered: songId=${songId}, sortBy=${sortBy}. Resetting state.`);
     if (observerRef.current) observerRef.current.disconnect();
-    setComments([]);
+    setActualComments([]);
     setOffset(0);
     setHasMore(true);
     setTotalCount(0);
     setIsLoadingMore(false);
     setError(null);
-    setIsRefreshing(false);
-
     startTransitionSort(() => {
       loadComments(false);
     });
@@ -552,20 +684,17 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
   // Effect for IntersectionObserver
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
-
     if (!isLoadingInitial && hasMore && !isLoadingMore && loadMoreRef.current) {
       const observer = new IntersectionObserver(
         (entries) => {
           if (entries[0].isIntersecting && !isLoadingMoreRef.current) {
             loadComments(true);
           }
-        },
-        { threshold: 1.0 }
+        }, { threshold: 1.0 }
       );
       observer.observe(loadMoreRef.current);
       observerRef.current = observer;
     }
-
     return () => { if (observerRef.current) observerRef.current.disconnect(); };
   }, [isLoadingInitial, hasMore, isLoadingMore, loadComments]);
 
@@ -576,19 +705,99 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
     }
   };
 
-  // --- Callback for successful comment submission ---
-  const handleCommentSubmitSuccess = useCallback(() => {
-    console.log("Comment submitted successfully (client callback). Refreshing.");
+  // --- Callback for successful TOP-LEVEL comment submission ---
+  const handleTopLevelCommentSubmitSuccess = useCallback(() => {
+    console.log("Top-level comment submitted successfully. Refreshing list.");
+    // No optimistic update needed, just refresh after delay
     setTimeout(refreshCommentList, REFRESH_DELAY);
   }, [refreshCommentList]);
 
-  // --- Callback for successful comment deletion ---
-  const handleCommentDeleted = useCallback((deletedCommentId: string) => {
-    console.log(`Comment ${deletedCommentId} deleted (client callback). Refreshing.`);
-    setTimeout(refreshCommentList, REFRESH_DELAY);
-  }, [refreshCommentList]);
+  // --- Callback for handling SERVER CONFIRMATION of a REPLY ---
+  const handleReplyConfirmed = useCallback((optimisticId: string, confirmedComment: CommentWithDetails) => {
+    console.log(`Confirming reply: optimisticId=${optimisticId}, realId=${confirmedComment.id}`);
+    startOptimisticTransition(() => {
+      setActualComments(prevActualComments => {
+        const confirmRecursively = (commentsList: CommentWithDetails[]): CommentWithDetails[] => {
+          return commentsList.map(c => {
+            if (c.id === confirmedComment.parentId) {
+              let updatedReplies = c.replies ? [...c.replies] : [];
+              const idx = updatedReplies.findIndex(r => (r as CommentWithDetails).optimisticId === optimisticId);
+              if (idx !== -1) {
+                // Replace optimistic reply with confirmed reply
+                const newReply = { ...confirmedComment };
+                newReply.isOptimistic = false;
+                newReply.optimisticId = undefined;
+                updatedReplies[idx] = newReply;
+              } else {
+                // Append confirmed reply if not found
+                updatedReplies.push({ ...confirmedComment, optimisticId: undefined } as CommentWithDetails);
+              }
+              return { ...c, replies: updatedReplies.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()) };
+            }
+            if (c.replies && c.replies.length > 0) {
+              return { ...c, replies: confirmRecursively(c.replies) };
+            }
+            return c;
+          });
+        };
+        return confirmRecursively(prevActualComments);
+      });
+    });
+  }, []);
 
-  // Removed handleLikeToggled callback
+  // --- Callback for handling SERVER ERROR during REPLY add ---
+  const handleReplyError = useCallback((optimisticId: string) => {
+    console.warn(`Removing optimistic reply ${optimisticId} due to server error.`);
+    startOptimisticTransition(() => {
+      setActualComments(prevActualComments => {
+        const removeRecursively = (commentsList: CommentWithDetails[]): CommentWithDetails[] => {
+          return commentsList
+            .map(c => {
+              if (c.replies && c.replies.length > 0) {
+                // *** Use optimisticId for filtering ***
+                const filteredReplies = (c.replies as CommentWithDetails[]).filter(reply => reply.optimisticId !== optimisticId);
+                if (filteredReplies.length !== c.replies.length) {
+                  console.log(`Removed reply ${optimisticId} from parent ${c.id}`);
+                  return { ...c, replies: removeRecursively(filteredReplies) };
+                } else {
+                  return { ...c, replies: removeRecursively(c.replies) };
+                }
+              }
+              return c;
+            })
+            // *** Use optimisticId for filtering top-level too ***
+            .filter(c => c.optimisticId !== optimisticId);
+        };
+        return removeRecursively(prevActualComments);
+      });
+    });
+  }, []);
+
+  // --- Callback for successful comment deletion (top-level or nested) ---
+  const handleCommentDeleted = useCallback((deletedCommentId: string, parentId: string | null) => {
+    console.log(`Comment ${deletedCommentId} deleted.`);
+    startOptimisticTransition(() => {
+      setActualComments(prevActualComments => {
+        const removeRecursively = (commentsList: CommentWithDetails[]): CommentWithDetails[] => {
+          return commentsList
+            .filter(c => c.id !== deletedCommentId)
+            .map(c => {
+              if (c.replies && c.replies.length > 0) {
+                return { ...c, replies: removeRecursively(c.replies) };
+              }
+              return c;
+            });
+        };
+        return removeRecursively(prevActualComments);
+      });
+      if (parentId === null) {
+        setOptimisticComments({ action: 'delete', comment: { id: deletedCommentId } });
+      }
+    });
+    // Optionally trigger a delayed refresh after delete
+    // setTimeout(refreshCommentList, REFRESH_DELAY);
+  }, [setOptimisticComments]);
+
 
   // --- Render JSX ---
   return (
@@ -597,9 +806,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
           {!isLoadingInitial && totalCount > 0 ? `${totalCount} Comment${totalCount !== 1 ? 's' : ''}` : 'Comments'}
-          {(isLoadingInitial || isPendingSort) && <Loader2 className="inline-block h-5 w-5 animate-spin text-gray-400 ml-2" />}
+          {(isLoadingInitial || isPendingSort || isPendingOptimistic) && <Loader2 className="inline-block h-5 w-5 animate-spin text-gray-400 ml-2" />}
         </h2>
-        {!isLoadingInitial && comments.length > 0 && (
+        {!isLoadingInitial && optimisticComments.length > 0 && (
           <SortDropdown currentSort={sortBy} onSortChange={handleSortChange} />
         )}
       </div>
@@ -608,14 +817,14 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
       <div className="mb-6 pb-4 border-b border-gray-200">
         <CommentInput
           songId={songId}
-          onSubmitSuccess={handleCommentSubmitSuccess}
+          onSubmitSuccess={handleTopLevelCommentSubmitSuccess}
           currentUser={currentUser}
         />
       </div>
 
       {/* Comments List & Loading States */}
       <div className="space-y-4">
-        {isLoadingInitial && comments.length === 0 && (
+        {isLoadingInitial && optimisticComments.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 text-gray-500">
             <Loader2 className="h-6 w-6 animate-spin mb-2" /> <span>Loading comments...</span>
           </div>
@@ -632,19 +841,22 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
             </button>
           </div>
         )}
-        {!isLoadingInitial && !error && comments.length === 0 && (
+        {!isLoadingInitial && !error && optimisticComments.length === 0 && (
           <p className="text-gray-500 text-center py-6 italic">No comments yet. Be the first!</p>
         )}
-        {/* Render Comments */}
-        {comments.map((comment) => (
-          <div key={comment.id} className="py-2 border-b border-gray-100 last:border-b-0">
+        {/* Render Comments using the optimistic state (for top-level deletes) */}
+        {/* *** Ensure comment uses the extended type *** */}
+        {optimisticComments.map((comment: CommentWithDetails) => (
+          <div key={comment.optimisticId || comment.id} className="py-2 border-b border-gray-100 last:border-b-0">
             <Comment
               comment={comment}
               songId={songId}
               currentUser={currentUser}
               level={0}
               onCommentDeleted={handleCommentDeleted}
-            // No longer passing onLikeToggled
+              onReplyConfirmed={handleReplyConfirmed}
+              onReplyError={handleReplyError}
+              refreshTopLevelList={refreshCommentList}
             />
           </div>
         ))}
@@ -657,7 +869,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
           </div>
         )}
         {/* End of Comments Message */}
-        {!isLoadingInitial && !isLoadingMore && !hasMore && comments.length > 0 && (
+        {!isLoadingInitial && !isLoadingMore && !hasMore && optimisticComments.length > 0 && (
           <p className="text-center text-gray-400 text-sm py-4 italic">~ End of comments ~</p>
         )}
       </div>
