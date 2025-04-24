@@ -1,11 +1,12 @@
-// src/db/schema.ts
 import {
   boolean,
   timestamp,
   pgTable,
   text,
   primaryKey,
+  uuid,
   integer,
+  varchar,
   index, // Import index
   serial, // Import serial for auto-incrementing IDs if preferred for comments
   uniqueIndex,
@@ -16,6 +17,7 @@ import {
 import postgres from "postgres"
 import { drizzle } from "drizzle-orm/postgres-js"
 import type { AdapterAccountType } from "next-auth/adapters"
+import {relations} from "drizzle-orm"
 
 
 
@@ -23,8 +25,6 @@ import type { AdapterAccountType } from "next-auth/adapters"
 // const pool = postgres(process.env.POSTGRES_URL!, { max: 1 })
 
 // export const db = drizzle(pool)
-
-// --- Existing Tables (Keep As Is) ---
 
 export const users = pgTable("user", {
   id: text("id")
@@ -128,7 +128,7 @@ export const songs = pgTable("song", {
      trendingScoreIdx: index("song_trending_score_idx").on(song.trending_score), // For ordering trending songs
   }));
 
-// --- NEW LIKES TABLE SCHEMA ---
+
 export const song_likes = pgTable("song_like", {
     // Foreign key referencing the users table
     userId: text("userId")
@@ -149,33 +149,114 @@ export const song_likes = pgTable("song_like", {
   })
 );
 
-// --- NEW COMMENTS TABLE SCHEMA ---
-export const song_comments = pgTable("song_comment", {
-    // Auto-incrementing integer primary key for each comment
-    id: serial("id").primaryKey(),
-    // Foreign key referencing the users table
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    // Foreign key referencing the songs table
-    songId: text("songId")
-      .notNull()
-      .references(() => songs.id, { onDelete: "cascade" }),
-    // The actual text content of the comment
-    commentText: text("commentText").notNull(),
-    // Timestamp when the comment was created
-    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
-    // Optional: Timestamp for when the comment was last updated
-    // updatedAt: timestamp("updatedAt", { mode: "date" }),
-  }, (comment) => ({
-    // Indexes for efficient querying
-    songIdIdx: index("comment_songId_idx").on(comment.songId), // Good for finding comments for a song
-    userIdIdx: index("comment_userId_idx").on(comment.userId), // Good for finding comments by a user
-  })
-);
+    // --- NEW: Comments Table ---
+    export const comments = pgTable('comment', {
+      // Use defaultRandom() to generate UUIDs automatically on insertion
+      id: uuid('id').defaultRandom().primaryKey(),
+      content: text('content').notNull(),
+      // Assuming song IDs are strings (like Spotify IDs). Adjust length as needed.
+      songId: varchar('song_id', { length: 255 }).notNull(),
+      // Foreign key linking to the user who posted the comment
+      userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }), // Cascade delete comments if user is deleted
+      // Self-referencing foreign key for replies (links to another comment's ID)
+      parentId: uuid('parent_id').references((): any => comments.id, { onDelete: 'cascade' }), // Cascade delete replies if parent comment is deleted
+      // Timestamp automatically set to the time of creation
+      createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+      // Optional: Denormalized like count for quicker reads.
+      // You would need to update this via triggers or within your like/unlike actions.
+      // likesCount: integer('likes_count').default(0).notNull(),
+  }, (table) => {
+      // Indexes to speed up common queries
+      return {
+          songIdIdx: index('comment_song_id_idx').on(table.songId), // Index on songId
+          userIdx: index('comment_user_id_idx').on(table.userId), // Index on userId
+          parentIdIdx: index('comment_parent_id_idx').on(table.parentId), // Index on parentId (for fetching replies)
+      };
+  });
 
-// Optional: Define types for selecting/inserting likes and comments if needed elsewhere
-// export type SongLike = typeof song_likes.$inferSelect;
-// export type NewSongLike = typeof song_likes.$inferInsert;
-// export type SongComment = typeof song_comments.$inferSelect;
-// export type NewSongComment = typeof song_comments.$inferInsert;
+  // --- NEW: Comment Likes Table ---
+  // Junction table to track which user liked which comment
+  export const commentLikes = pgTable('comment_like', {
+      // Foreign key linking to the user who liked the comment
+      userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+      // Foreign key linking to the comment that was liked
+      commentId: uuid('comment_id').notNull().references(() => comments.id, { onDelete: 'cascade' }),
+      // Timestamp automatically set to the time the like was created
+      createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  }, (table) => {
+      // Define a composite primary key to ensure a user can only like a specific comment once.
+      return {
+          pk: primaryKey({ columns: [table.userId, table.commentId] }),
+          // Optional index for querying likes by commentId if needed frequently
+          commentIdIdx: index('comment_like_comment_id_idx').on(table.commentId),
+      };
+  });
+
+
+  // --- Relations Definitions ---
+  // Define how tables relate to each other for easier querying with Drizzle ORM.
+
+  // Relations for the users table
+  export const usersRelations = relations(users, ({ many }) => ({
+      // One user can have many accounts (OAuth providers)
+      accounts: many(accounts),
+      // One user can have many active sessions
+      sessions: many(sessions),
+      // One user can post many comments
+      comments: many(comments),
+      // One user can like many comments
+      commentLikes: many(commentLikes),
+  }));
+
+  // Relations for the accounts table
+  export const accountsRelations = relations(accounts, ({ one }) => ({
+      // Each account belongs to one user
+      user: one(users, {
+          fields: [accounts.userId],
+          references: [users.id],
+      }),
+  }));
+
+  // Relations for the sessions table
+  export const sessionsRelations = relations(sessions, ({ one }) => ({
+      // Each session belongs to one user
+      user: one(users, {
+          fields: [sessions.userId],
+          references: [users.id],
+      }),
+  }));
+
+  // Relations for the comments table
+  export const commentsRelations = relations(comments, ({ one, many }) => ({
+      // Each comment belongs to one user
+      user: one(users, {
+          fields: [comments.userId],
+          references: [users.id],
+      }),
+      // Each comment (reply) can have one parent comment
+      parent: one(comments, {
+          fields: [comments.parentId], // The column in this table (comments) that holds the foreign key
+          references: [comments.id],   // The column in the related table (comments) that it references
+          relationName: 'comment_replies', // Explicit name for the self-referencing relation
+      }),
+      // Each comment can have many replies (other comments referencing it as parent)
+      replies: many(comments, {
+          relationName: 'comment_replies', // Must match the 'one' side's relationName
+      }),
+      // Each comment can have many likes
+      likes: many(commentLikes),
+  }));
+
+  // Relations for the commentLikes table
+  export const commentLikesRelations = relations(commentLikes, ({ one }) => ({
+      // Each like record belongs to one comment
+      comment: one(comments, {
+          fields: [commentLikes.commentId],
+          references: [comments.id],
+      }),
+      // Each like record belongs to one user
+      user: one(users, {
+          fields: [commentLikes.userId],
+          references: [users.id],
+      }),
+  }));
