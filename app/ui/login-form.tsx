@@ -29,18 +29,40 @@ export default function LoginForm() {
       <Image
         src="/logo.png"
         alt="PulseOut Logo"
-        width={120}
-        height={120}
+        width={200}
+        height={200}
         className="mx-auto"
         priority
       />
 
-      <h1 className="text-white text-2xl font-semibold">Welcome to PulseOut!</h1>
+      {/* Google Login Form */}
+      <form action={googleAction} className="space-y-3">
+        <button
+          className="w-full flex items-center justify-center gap-3 text-xl rounded-lg bg-white px-6 py-4 text-gray-700 font-semibold hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 active:bg-gray-300 transition-all duration-200 disabled:opacity-50"
+          type="submit"
+          disabled={isGooglePending || isSpotifyPending}
+          aria-disabled={isGooglePending || isSpotifyPending}
+        >
+          {isGooglePending ? (
+            <Loader2 className="h-7 w-7 animate-spin text-gray-600" />
+          ) : (
+            <Image
+              src="/Google__G__logo.svg"
+              alt="Google Logo"
+              width={28}
+              height={28}
+            />
+          )}
+          {isGooglePending ? 'Logging in...' : 'Log in with Google'}
+        </button>
+        {googleErrorMessage && (
+          <p className="text-sm text-red-400">{googleErrorMessage}</p>
+        )}
+      </form>
 
       {/* Spotify Login Form */}
       {/* Use the original action here, useActionState handles the rest */}
       <form action={spotifyAction} className="space-y-3">
-        <input type="hidden" name="callbackUrl" value={callbackUrl} />
         <button
           className="w-full flex items-center justify-center gap-3 text-xl rounded-lg bg-black px-6 py-4 text-white font-semibold hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1DB954] active:bg-zinc-900 transition-all duration-200 disabled:opacity-50"
           type="submit"
@@ -59,39 +81,13 @@ export default function LoginForm() {
           )}
           {isSpotifyPending ? 'Logging in...' : 'Log in with Spotify'}
         </button>
+        <p className=''>(Spotify login requires approval)</p>
         {spotifyErrorMessage && (
           <p className="text-sm text-red-400">{spotifyErrorMessage}</p>
         )}
       </form>
 
-      {/* Google Login Form */}
-      {/* Use the original action here */}
-      <form action={googleAction} className="space-y-3">
-         {/* You might want to pass callbackUrl to Google too */}
-         {/* <input type="hidden" name="callbackUrl" value={callbackUrl} /> */}
-         <button
-           className="w-full flex items-center justify-center gap-3 text-xl rounded-lg bg-white px-6 py-4 text-gray-700 font-semibold hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 active:bg-gray-300 transition-all duration-200 disabled:opacity-50"
-           type="submit"
-           disabled={isGooglePending || isSpotifyPending} // Disable if either is pending
-           aria-disabled={isGooglePending || isSpotifyPending}
-         >
-           {isGooglePending ? (
-                <Loader2 className="h-7 w-7 animate-spin text-gray-600" />
-           ) : (
-                <Image
-                    src="/Google__G__logo.svg" // Replace with your actual Google logo path
-                    alt="Google Logo"
-                    width={28}
-                    height={28}
-                />
-           )}
-           {isGooglePending ? 'Logging in...' : 'Log in with Google'}
-         </button>
-         {/* Display Google-specific error message if needed */}
-         {googleErrorMessage && (
-             <p className="text-sm text-red-400">{googleErrorMessage}</p>
-         )}
-      </form>
+
 
     </div>
   );
