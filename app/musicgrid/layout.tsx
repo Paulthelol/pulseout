@@ -1,7 +1,6 @@
 import React from 'react';
 import SideBar from '../ui/side-bar';
 import SearchBar from '@/app/ui/search-bar';
-import SearchResults from '@/app/ui/search-results';
 import { Suspense } from 'react';
 import { SearchBarSkeleton } from '@/app/ui/skeleton'; // Assuming a simple skeleton for the search bar
 
@@ -35,16 +34,7 @@ export default function Layout({
                        <SearchBar placeholder="Search music..." />
                     </Suspense>
                 </div>
-
-                {/* Conditional Rendering: Show Search Results or default Children */}
-                {query ? (
-                    // If a query exists, render SearchResults component
-                    // Pass the query prop to SearchResults
-                    <SearchResults query={query} />
-                ) : (
-                    // If no query, render the default page content (e.g., Trending, New Releases)
-                    children
-                )}
+                    {children}
             </div>
         </div>
     );
