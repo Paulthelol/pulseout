@@ -364,13 +364,13 @@ const Comment: React.FC<CommentProps> = ({ comment, songId, currentUser, level =
             onClick={handleDelete}
             disabled={isDeleting}
             className={`absolute top-0 right-0 p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
-                       opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed`}
+                       opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed`} // Always visible by default, hidden on md+ screens until group hover
             aria-label="Delete comment"
           >
             {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
           </button>
         )}
-        <div className="flex items-baseline space-x-1.5 mb-1 flex-wrap pr-6">
+        <div className="flex items-baseline space-x-1.5 mb-1 flex-wrap pr-8 md:pr-6"> {/* Increase padding slightly on mobile for always-visible icon */}
           <span className="font-semibold text-sm text-gray-800 break-words">{comment.user.name || 'Anonymous'}</span>
           <span className="text-xs text-gray-400">·</span>
           <span className="text-xs text-gray-500 flex-shrink-0">{formatTimestamp(comment.createdAt)}</span>
