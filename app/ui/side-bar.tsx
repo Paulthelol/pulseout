@@ -22,7 +22,7 @@ export default function SideBar() {
       {/* --- Top/Left Section (Logo & Nav) --- */}
       <div className="flex flex-row items-center gap-4 md:flex-col md:items-start md:gap-0">
         {/* Logo */}
-        <div className="shrink-0 md:mb-[30px]">
+        <div className="pb-2 shrink-0 md:mb-[30px]">
           <Link href="/musicgrid/trending">
             <Image
                 src="/logo.png" // Ensure this path is correct in your public folder
@@ -35,17 +35,17 @@ export default function SideBar() {
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex flex-row items-center gap-4 md:flex-col md:items-start md:gap-[15px]">
+        <nav className="flex flex-row items-center gap-6 md:flex-col md:items-start md:gap-[15px]">
           <Link href="/musicgrid/trending" className="flex items-center gap-2 text-sm text-white no-underline transition-colors duration-200 ease-in-out hover:underline hover:text-[#00ffcc]">
-            <TrendingUp size={16} className="md:hidden" />
+            <TrendingUp size={22} className="md:hidden" />
             <span className="hidden md:inline">Trending</span>
           </Link>
           <Link href="#" className="flex items-center gap-2 text-sm text-white no-underline transition-colors duration-200 ease-in-out hover:underline hover:text-[#00ffcc]">
-             <Library size={16} className="md:hidden" />
+             <Library size={22} className="md:hidden" />
              <span className="hidden md:inline">Genres</span>
           </Link>
           <Link href="/musicgrid/likes" className="flex items-center gap-2 text-sm text-white no-underline transition-colors duration-200 ease-in-out hover:underline hover:text-[#00ffcc]">
-             <Heart size={16} className="md:hidden" />
+             <Heart size={22} className="md:hidden" />
              <span className="hidden md:inline">Likes</span>
           </Link>
         </nav>
@@ -66,7 +66,7 @@ export default function SideBar() {
             href={`/musicgrid/profile/${userId}/viewprofile`} // Dynamic href using userId
             className="flex items-center gap-2 text-[13px] text-white no-underline transition-colors duration-200 ease-in-out hover:underline hover:text-[#00ffcc]"
           >
-             <User size={16} className="md:hidden" />
+             <User size={22} className="md:hidden" />
              <span className="hidden md:inline">My Profile</span>
           </Link>
         )}
@@ -77,7 +77,7 @@ export default function SideBar() {
           <div>
             <form action={SignOut}>
               <button type="submit" className="flex items-center gap-2 text-[13px] text-white no-underline bg-transparent border-none cursor-pointer transition-colors duration-200 ease-in-out hover:underline hover:text-[#00ffcc]">
-                <LogOut size={16} className="md:hidden" />
+                <LogOut size={22} className="md:hidden" />
                 <span className="hidden md:inline">Sign Out</span>
               </button>
             </form>
