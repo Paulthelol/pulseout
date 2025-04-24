@@ -455,405 +455,367 @@ export async function getTrendingSongsAction(
 }
 
 
-// --- Shared Type Definition ---
-// It's recommended to move this type to a shared location (e.g., 'types/index.ts')
-// if used by both client and server components/actions.
-export type CommentWithDetails = {
-  id: string; // Comment UUID
-  content: string; // Comment text
-  createdAt: Date; // Timestamp of creation
-  parentId: string | null; // ID of parent comment if it's a reply
-  songId: string; // ID of the song this comment belongs to
-  user: { // Information about the user who posted
-    id: string;
-    name: string | null;
-    image: string | null;
+   // --- Shared Type Definition ---
+   export type CommentWithDetails = {
+    id: string; // Comment UUID
+    content: string; // Comment text
+    createdAt: Date; // Timestamp of creation
+    parentId: string | null; // ID of parent comment if it's a reply
+    songId: string; // ID of the song this comment belongs to
+    user: { // Information about the user who posted
+      id: string;
+      name: string | null;
+      image: string | null;
+    };
+    likes: number; // Total number of likes
+    currentUserLiked: boolean; // Whether the currently logged-in user liked this comment
+    replies?: CommentWithDetails[]; // Array of nested replies (initially loaded)
+    replyCount?: number; // Total count of all replies (even unloaded ones)
   };
-  likes: number; // Total number of likes
-  currentUserLiked: boolean; // Whether the currently logged-in user liked this comment
-  replies?: CommentWithDetails[]; // Array of nested replies (initially loaded)
-  replyCount?: number; // Total count of all replies (even unloaded ones)
-};
 
-// --- Fetch Comments Action (with Pagination) ---
+  // --- Fetch Comments Action (with Pagination) ---
 
-// Zod schema to validate input parameters for fetching comments
-const FetchParamsSchema = z.object({
-  songId: z.string().min(1, "Song ID is required."), // Ensure songId is provided
-  sortBy: z.enum(['top', 'recent']), // Allow sorting by 'top' (likes) or 'recent'
-  limit: z.number().int().positive().default(10), // Number of comments per page
-  offset: z.number().int().nonnegative().default(0), // Starting point for fetching comments
-});
-
-/**
- * Fetches a paginated list of comments for a specific song, including user details,
- * like counts, initial replies, and total reply counts.
- * @param params - Object containing songId, sortBy, limit, and offset.
- * @returns An object containing the fetched comments, a flag indicating if more comments exist,
- * and the total count of top-level comments.
- */
-export async function fetchComments(
-  params: z.infer<typeof FetchParamsSchema>
-): Promise<{ comments: CommentWithDetails[]; hasMore: boolean; totalCount: number }> {
-  // Validate input parameters
-  const validation = FetchParamsSchema.safeParse(params);
-  if (!validation.success) {
-    console.error("Invalid fetchComments parameters:", validation.error.flatten().fieldErrors);
-    // Return an empty state or throw an error for invalid input
-    return { comments: [], hasMore: false, totalCount: 0 };
-  }
-  const { songId, sortBy, limit, offset } = validation.data;
-
-  // Get current user session
-  const session = await auth();
-  const currentUserId = session?.user?.id; // Use optional chaining
-
-  console.log(`Fetching comments page: songId=${songId}, sortBy=${sortBy}, limit=${limit}, offset=${offset}, userId=${currentUserId || 'None'}`);
-
-  try {
-    // 1. Get Total Count of Top-Level Comments
-    // This is needed to calculate if there are more pages (`hasMore`).
-    const totalCountResult = await db
-      .select({ count: count() }) // Count all rows
-      .from(comments)
-      .where(and(
-        eq(comments.songId, songId), // Filter by song ID
-        isNull(comments.parentId) // Only count comments without a parent (top-level)
-      ));
-    const totalCount = totalCountResult[0]?.count ?? 0; // Extract count, default to 0
-
-    // 2. Fetch Paginated Top-Level Comments with Details
-    // Use Common Table Expressions (CTE) for better query structure, especially for likes count.
-    const likesSubQuery = db.$with('likes_sq').as(
-      db.select({
-        // The key 'comment_id_likes' implicitly aliases commentLikes.commentId
-        comment_id_likes: commentLikes.commentId,
-        // Use .as() on the sql fragment for the count alias within the CTE
-        likes_count: sql<number>`count(*)`.as('likes_count')
-      })
-        .from(commentLikes)
-        .groupBy(commentLikes.commentId) // Group by the original column name
-    );
-
-    // Main query to fetch the batch of top-level comments
-    const topLevelCommentsQuery = db.with(likesSubQuery).select({
-      comment: comments, // Select all columns from the comments table
-      user: { // Select specific user details
-        id: users.id,
-        name: users.name,
-        image: users.image,
-      },
-      // Use COALESCE to ensure likesCount is 0 if no likes exist
-      likesCount: sql<number>`COALESCE(${likesSubQuery.likes_count}, 0)`.mapWith(Number).as('likes_count'),
-      // Check if the current user liked this comment (returns boolean)
-      currentUserLiked: currentUserId
-        ? sql<boolean>`EXISTS (SELECT 1 FROM ${commentLikes} WHERE ${commentLikes.commentId} = ${comments.id} AND ${commentLikes.userId} = ${currentUserId})`.mapWith(Boolean).as('current_user_liked')
-        : sql<boolean>`false`.as('current_user_liked'), // False if no user logged in
-      // Subquery to get the total count of direct replies for each top-level comment
-      replyCount: sql<number>`(SELECT COUNT(*) FROM ${comments} AS r WHERE r.parent_id = ${comments.id})`.mapWith(Number).as('reply_count'),
-    })
-      .from(comments)
-      .leftJoin(users, eq(comments.userId, users.id)) // Join with users table
-      .leftJoin(likesSubQuery, eq(comments.id, likesSubQuery.comment_id_likes)) // Join with likes CTE
-      .where(and(
-        eq(comments.songId, songId), // Filter by song ID
-        isNull(comments.parentId) // Only top-level comments
-      ))
-      .orderBy(
-        // Apply sorting based on input parameter
-        sortBy === 'top'
-          ? desc(sql`likes_count`) // Sort by calculated likes count (descending)
-          : desc(comments.createdAt) // Sort by creation date (descending)
-      )
-      .limit(limit) // Apply pagination limit
-      .offset(offset); // Apply pagination offset
-
-    const topLevelCommentsData = await topLevelCommentsQuery;
-
-    // 3. Fetch Initial Replies for the Fetched Top-Level Comments
-    const commentIds = topLevelCommentsData.map(c => c.comment.id); // Get IDs of the fetched comments
-    let initialRepliesData: CommentWithDetails[] = []; // Initialize array for replies
-
-    if (commentIds.length > 0) {
-      const REPLIES_LIMIT = 2; // Number of initial replies to fetch per comment
-
-      // Use a CTE with ROW_NUMBER() for efficient fetching of top N replies per parent
-      const repliesSubQuery = db.$with('ranked_replies').as(
-        db.select({
-          // Select all necessary columns from comments and users for replies
-          id: comments.id, content: comments.content, createdAt: comments.createdAt,
-          parentId: comments.parentId, songId: comments.songId, userId: comments.userId,
-          userName: users.name, userImage: users.image,
-          // Assign a rank to each reply within its parent group, ordered by creation date
-          rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${comments.parentId} ORDER BY ${comments.createdAt} ASC)`.mapWith(Number),
-        })
-          .from(comments)
-          .leftJoin(users, eq(comments.userId, users.id))
-          // Filter for replies whose parent ID is in the list of fetched top-level comment IDs
-          .where(sql`${comments.parentId} IN ${commentIds}`)
-      );
-
-      // Query to select the ranked replies and their like status/count
-      const initialRepliesResult = await db.with(repliesSubQuery).select({
-        comment: { // Reconstruct comment object structure
-          id: repliesSubQuery.id, content: repliesSubQuery.content, createdAt: repliesSubQuery.createdAt,
-          parentId: repliesSubQuery.parentId, songId: repliesSubQuery.songId, userId: repliesSubQuery.userId,
-        },
-        user: { // Reconstruct user object structure
-          id: repliesSubQuery.userId, name: repliesSubQuery.userName, image: repliesSubQuery.userImage,
-        },
-        // Calculate likes and liked status for these replies (similar to top-level)
-        likesCount: sql<number>`(SELECT COUNT(*) FROM ${commentLikes} WHERE ${commentLikes.commentId} = ${repliesSubQuery.id})`.mapWith(Number).as('likes_count'),
-        currentUserLiked: currentUserId
-          ? sql<boolean>`EXISTS (SELECT 1 FROM ${commentLikes} WHERE ${commentLikes.commentId} = ${repliesSubQuery.id} AND ${commentLikes.userId} = ${currentUserId})`.mapWith(Boolean).as('current_user_liked')
-          : sql<boolean>`false`.as('current_user_liked'),
-      })
-        .from(repliesSubQuery)
-        // Filter to get only the top N replies (e.g., rank <= 2)
-        .where(sql`${repliesSubQuery.rn} <= ${REPLIES_LIMIT}`)
-        .orderBy(repliesSubQuery.parentId, asc(repliesSubQuery.createdAt)); // Order for easier grouping later
-
-      // Format the fetched replies into the CommentWithDetails structure
-      initialRepliesData = initialRepliesResult.map(({ comment, user, likesCount, currentUserLiked }) => ({
-        id: comment.id,
-        content: comment.content,
-        createdAt: comment.createdAt,
-        parentId: comment.parentId,
-        songId: comment.songId, // Include songId if needed
-        user: user ?? { id: 'unknown', name: 'Unknown User', image: null }, // Handle potential null user
-        likes: likesCount ?? 0, // Default likes to 0
-        currentUserLiked: currentUserLiked ?? false, // Default liked status
-        replies: [], // Replies fetched this way don't have further nested replies loaded initially
-        replyCount: 0, // We don't calculate reply counts for replies in this initial fetch
-      }));
-    }
-
-
-    // 4. Combine Top-Level Comments with Their Initial Replies
-    const finalComments = topLevelCommentsData.map(({ comment, user, likesCount, currentUserLiked, replyCount }) => {
-      const userData = user ?? { id: 'unknown', name: 'Unknown User', image: null }; // Handle potential null user
-      // Filter the `initialRepliesData` to find replies belonging to this specific top-level comment
-      const repliesForThisComment = initialRepliesData.filter(reply => reply.parentId === comment.id);
-
-      // Return the final structure matching CommentWithDetails
-      return {
-        id: comment.id,
-        content: comment.content,
-        createdAt: comment.createdAt,
-        parentId: comment.parentId,
-        songId: comment.songId,
-        user: userData,
-        likes: likesCount ?? 0,
-        currentUserLiked: currentUserLiked ?? false,
-        replies: repliesForThisComment, // Assign the fetched initial replies
-        replyCount: replyCount ?? 0, // Assign the total reply count
-      };
-    });
-
-
-    // 5. Determine if More Comments Exist
-    // Compare the next potential offset with the total count
-    const hasMore = offset + finalComments.length < totalCount;
-
-    // Return the result
-    return { comments: finalComments, hasMore, totalCount };
-
-  } catch (error) {
-    console.error('Database Error: Failed to fetch comments page.', error);
-    // Return empty state in case of error
-    return { comments: [], hasMore: false, totalCount: 0 };
-  }
-}
-
-
-// --- Add Comment Action ---
-
-// Zod schema for validating data when adding a comment
-const CommentSchema = z.object({
-  // Trim whitespace, ensure minimum length, set maximum length
-  content: z.string().trim().min(1, { message: 'Comment cannot be empty.' }).max(1000, { message: 'Comment too long (max 1000 characters).' }),
-  songId: z.string().min(1, "Song ID is required."), // Ensure songId is present
-  parentId: z.string().uuid().nullable(), // Allow UUID for parent or null for top-level
-  // userId is added internally from the session, not part of the form data schema
-});
-
-/**
- * Adds a new comment or reply to the database.
- * @param formData - The FormData object from the comment input form.
- * @returns An object indicating success status, potential error message, and the new comment's ID.
- */
-export async function addComment(formData: FormData): Promise<{ success: boolean; error?: string; newCommentId?: string }> {
-  // 1. Check Authentication
-  const session = await auth();
-  if (!session?.user?.id) {
-    // If not authenticated, redirect to login page
-    console.log("User not authenticated. Redirecting to signin.");
-    redirect('/api/auth/signin'); // Adjust login path if needed
-    // Note: Redirect throws an error, so execution stops here.
-  }
-  const currentUserId = session.user.id;
-
-  // 2. Validate Form Data
-  const validatedFields = CommentSchema.safeParse({
-    content: formData.get('content'),
-    songId: formData.get('songId'),
-    // Get parentId, default to null if not present or empty
-    parentId: formData.get('parentId') || null,
+  const FetchParamsSchema = z.object({
+      songId: z.string().min(1, "Song ID is required."),
+      sortBy: z.enum(['top', 'recent']),
+      limit: z.number().int().positive().default(10),
+      offset: z.number().int().nonnegative().default(0),
   });
 
-  // Handle validation errors
-  if (!validatedFields.success) {
-    const errors = validatedFields.error.flatten().fieldErrors;
-    console.error('Add comment validation Error:', errors);
-    // Return the first validation error found
-    return {
-      success: false,
-      error: errors.content?.[0] || errors.songId?.[0] || errors.parentId?.[0] || 'Invalid input.',
-    };
+  export async function fetchComments(
+      params: z.infer<typeof FetchParamsSchema>
+  ): Promise<{ comments: CommentWithDetails[]; hasMore: boolean; totalCount: number }> {
+      const validation = FetchParamsSchema.safeParse(params);
+      if (!validation.success) {
+          console.error("Invalid fetchComments parameters:", validation.error.flatten().fieldErrors);
+          return { comments: [], hasMore: false, totalCount: 0 };
+      }
+      const { songId, sortBy, limit, offset } = validation.data;
+      const session = await auth();
+      const currentUserId = session?.user?.id;
+
+      console.log(`Fetching comments page: songId=${songId}, sortBy=${sortBy}, limit=${limit}, offset=${offset}, userId=${currentUserId || 'None'}`);
+
+      try {
+          // 1. Get Total Count of Top-Level Comments
+          const totalCountResult = await db
+              .select({ count: count() })
+              .from(comments)
+              .where(and(
+                  eq(comments.songId, songId),
+                  isNull(comments.parentId)
+              ));
+          const totalCount = totalCountResult[0]?.count ?? 0;
+
+          // 2. Fetch Paginated Top-Level Comments with Details
+          const likesSubQuery = db.$with('likes_sq').as(
+              db.select({
+                  comment_id_likes: commentLikes.commentId,
+                  likes_count: sql<number>`count(*)`.as('likes_count')
+              })
+              .from(commentLikes)
+              .groupBy(commentLikes.commentId)
+          );
+
+          const topLevelCommentsQuery = db.with(likesSubQuery).select({
+                  comment: comments,
+                  user: { id: users.id, name: users.name, image: users.image },
+                  likesCount: sql<number>`COALESCE(${likesSubQuery.likes_count}, 0)`.mapWith(Number).as('likes_count'),
+                  currentUserLiked: currentUserId
+                      ? sql<boolean>`EXISTS (SELECT 1 FROM ${commentLikes} WHERE ${commentLikes.commentId} = ${comments.id} AND ${commentLikes.userId} = ${currentUserId})`.mapWith(Boolean).as('current_user_liked')
+                      : sql<boolean>`false`.as('current_user_liked'),
+                  replyCount: sql<number>`(SELECT COUNT(*) FROM ${comments} AS r WHERE r.parent_id = ${comments.id})`.mapWith(Number).as('reply_count'),
+              })
+              .from(comments)
+              .leftJoin(users, eq(comments.userId, users.id))
+              .leftJoin(likesSubQuery, eq(comments.id, likesSubQuery.comment_id_likes))
+              .where(and(
+                  eq(comments.songId, songId),
+                  isNull(comments.parentId)
+              ))
+              .orderBy(
+                  sortBy === 'top' ? desc(sql`likes_count`) : desc(comments.createdAt)
+              )
+              .limit(limit)
+              .offset(offset);
+
+          const topLevelCommentsData = await topLevelCommentsQuery;
+
+          // 3. Fetch Initial Replies
+          const commentIds = topLevelCommentsData.map(c => c.comment.id);
+          let initialRepliesData: CommentWithDetails[] = [];
+
+          if (commentIds.length > 0) {
+              const REPLIES_LIMIT = 2;
+
+              // Use a CTE with ROW_NUMBER()
+              const repliesSubQuery = db.$with('ranked_replies').as(
+                  db.select({
+                      id: comments.id, content: comments.content, createdAt: comments.createdAt,
+                      parentId: comments.parentId, songId: comments.songId, userId: comments.userId,
+                      userName: users.name, userImage: users.image,
+                      // *** FIXED: Added .as('rn') here ***
+                      rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${comments.parentId} ORDER BY ${comments.createdAt} ASC)`.as('rn'),
+                  })
+                  .from(comments)
+                  .leftJoin(users, eq(comments.userId, users.id))
+                  .where(sql`${comments.parentId} IN ${commentIds}`)
+              );
+
+              // Query using the CTE
+              const initialRepliesResult = await db.with(repliesSubQuery).select({
+                      comment: {
+                          id: repliesSubQuery.id, content: repliesSubQuery.content, createdAt: repliesSubQuery.createdAt,
+                          parentId: repliesSubQuery.parentId, songId: repliesSubQuery.songId, userId: repliesSubQuery.userId,
+                      },
+                      user: {
+                          id: repliesSubQuery.userId, name: repliesSubQuery.userName, image: repliesSubQuery.userImage,
+                      },
+                       likesCount: sql<number>`(SELECT COUNT(*) FROM ${commentLikes} WHERE ${commentLikes.commentId} = ${repliesSubQuery.id})`.mapWith(Number).as('likes_count'),
+                       currentUserLiked: currentUserId
+                          ? sql<boolean>`EXISTS (SELECT 1 FROM ${commentLikes} WHERE ${commentLikes.commentId} = ${repliesSubQuery.id} AND ${commentLikes.userId} = ${currentUserId})`.mapWith(Boolean).as('current_user_liked')
+                          : sql<boolean>`false`.as('current_user_liked'),
+                      // We need rn to filter, but don't need it in the final select projection
+                      // rn: repliesSubQuery.rn
+                  })
+                  .from(repliesSubQuery)
+                  // *** FIXED: Reference the aliased field 'rn' from the CTE ***
+                  .where(sql`${repliesSubQuery.rn} <= ${REPLIES_LIMIT}`)
+                  .orderBy(repliesSubQuery.parentId, asc(repliesSubQuery.createdAt));
+
+               // Format replies
+               initialRepliesData = initialRepliesResult.map(({ comment, user, likesCount, currentUserLiked }) => ({
+                  id: comment.id,
+                  content: comment.content,
+                  createdAt: comment.createdAt,
+                  parentId: comment.parentId,
+                  songId: comment.songId,
+                  user: user ?? { id: 'unknown', name: 'Unknown User', image: null },
+                  likes: likesCount ?? 0,
+                  currentUserLiked: currentUserLiked ?? false,
+                  replies: [],
+                  replyCount: 0,
+               }));
+          }
+
+
+          // 4. Combine Top-Level Comments with Their Initial Replies
+          const finalComments = topLevelCommentsData.map(({ comment, user, likesCount, currentUserLiked, replyCount }) => {
+               const userData = user ?? { id: 'unknown', name: 'Unknown User', image: null };
+               const repliesForThisComment = initialRepliesData.filter(reply => reply.parentId === comment.id);
+               return {
+                  id: comment.id,
+                  content: comment.content,
+                  createdAt: comment.createdAt,
+                  parentId: comment.parentId,
+                  songId: comment.songId,
+                  user: userData,
+                  likes: likesCount ?? 0,
+                  currentUserLiked: currentUserLiked ?? false,
+                  replies: repliesForThisComment,
+                  replyCount: replyCount ?? 0,
+               };
+          });
+
+          // 5. Determine if More Comments Exist
+          const hasMore = offset + finalComments.length < totalCount;
+
+          return { comments: finalComments, hasMore, totalCount };
+
+      } catch (error) {
+          console.error('Database Error: Failed to fetch comments page.', error);
+          return { comments: [], hasMore: false, totalCount: 0 };
+      }
   }
 
-  // Destructure validated data
-  const { content, songId, parentId } = validatedFields.data;
 
-  // 3. Insert into Database
-  try {
-    const result = await db.insert(comments).values({
-      content,
-      songId,
-      userId: currentUserId, // Use ID from session
-      parentId: parentId, // Drizzle handles null correctly
-    }).returning({ insertedId: comments.id }); // Return the ID of the newly inserted comment
+  // --- Add Comment Action ---
+  const CommentSchema = z.object({
+      content: z.string().trim().min(1, { message: 'Comment cannot be empty.' }).max(1000, { message: 'Comment too long (max 1000 characters).' }),
+      songId: z.string().min(1, "Song ID is required."),
+      parentId: z.string().uuid().nullable(),
+  });
 
-    const newCommentId = result[0]?.insertedId;
+  export async function addComment(formData: FormData): Promise<{ success: boolean; error?: string; newCommentId?: string }> {
+      const session = await auth();
+      if (!session?.user?.id) {
+           console.log("User not authenticated. Redirecting to signin.");
+           redirect('/api/auth/signin');
+      }
+      const currentUserId = session.user.id;
+      const validatedFields = CommentSchema.safeParse({
+          content: formData.get('content'),
+          songId: formData.get('songId'),
+          parentId: formData.get('parentId') || null,
+      });
 
-    // Check if insertion was successful
-    if (!newCommentId) {
-      throw new Error('Failed to insert comment, no ID returned.');
-    }
+      if (!validatedFields.success) {
+          const errors = validatedFields.error.flatten().fieldErrors;
+          console.error('Add comment validation Error:', errors);
+          return {
+              success: false,
+              error: errors.content?.[0] || errors.songId?.[0] || errors.parentId?.[0] || 'Invalid input.',
+          };
+      }
+      const { content, songId, parentId } = validatedFields.data;
 
-    console.log(`Comment added: ${newCommentId} for song ${songId} by user ${currentUserId}`);
+      try {
+          const result = await db.insert(comments).values({
+              content, songId, userId: currentUserId, parentId,
+          }).returning({ insertedId: comments.id });
 
-    // 4. Revalidate Cache
-    // Invalidate the cache for the specific song's view page.
-    // This tells Next.js to refetch data for this page on the next request.
-    console.log(`Revalidating path: /musicgrid/${songId}/view`);
-    revalidatePath(`/musicgrid/${songId}/view`); // Adjust path pattern if needed
+          const newCommentId = result[0]?.insertedId;
+          if (!newCommentId) throw new Error('Failed to insert comment, no ID returned.');
 
-    // Return success status and the new comment ID
-    return { success: true, newCommentId };
+          console.log(`Comment added: ${newCommentId} for song ${songId} by user ${currentUserId}`);
+          console.log(`Revalidating path: /musicgrid/${songId}/view`);
+          revalidatePath(`/musicgrid/${songId}/view`);
 
-  } catch (error) {
-    console.error('Database Error: Failed to add comment.', error);
-    // Return error status
-    return { success: false, error: 'Failed to add comment due to a database error. Please try again.' };
+          return { success: true, newCommentId };
+
+      } catch (error) {
+          console.error('Database Error: Failed to add comment.', error);
+          return { success: false, error: 'Failed to add comment due to a database error. Please try again.' };
+      }
   }
-}
 
 
-// --- Toggle Comment Like Action ---
+  // --- Toggle Comment Like Action ---
+  const LikeSchema = z.object({
+      commentId: z.string().uuid({ message: "Invalid comment ID format." }),
+  });
 
-// Zod schema for validating the comment ID when liking/unliking
-const LikeSchema = z.object({
-  commentId: z.string().uuid({ message: "Invalid comment ID format." }), // Expecting a valid UUID
-  // userId is added internally from session
+  export async function toggleCommentLike(
+      commentId: string
+  ): Promise<{ success: boolean; error?: string; liked?: boolean; newLikes?: number }> {
+      const session = await auth();
+      if (!session?.user?.id) {
+           console.log("User not authenticated for like action. Redirecting to signin.");
+           redirect('/api/auth/signin');
+      }
+      const currentUserId = session.user.id;
+      const validatedFields = LikeSchema.safeParse({ commentId });
+      if (!validatedFields.success) {
+          console.error("Toggle like validation error:", validatedFields.error.flatten().fieldErrors);
+          return { success: false, error: validatedFields.error.flatten().fieldErrors.commentId?.[0] || 'Invalid comment ID.' };
+      }
+
+      try {
+          let liked = false;
+          let newLikes = 0;
+
+          await db.transaction(async (tx) => {
+              const existingLike = await tx.query.commentLikes.findFirst({
+                  where: and( eq(commentLikes.userId, currentUserId), eq(commentLikes.commentId, commentId)),
+                  columns: { userId: true }
+              });
+
+              if (existingLike) {
+                  await tx.delete(commentLikes).where(and( eq(commentLikes.userId, currentUserId), eq(commentLikes.commentId, commentId)));
+                  liked = false;
+                  console.log(`User ${currentUserId} unliked comment ${commentId}`);
+              } else {
+                  await tx.insert(commentLikes).values({ userId: currentUserId, commentId: commentId });
+                  liked = true;
+                  console.log(`User ${currentUserId} liked comment ${commentId}`);
+              }
+
+              const result = await tx.select({ count: count() }).from(commentLikes).where(eq(commentLikes.commentId, commentId));
+              newLikes = result[0]?.count ?? 0;
+          });
+
+           const commentData = await db.query.comments.findFirst({
+               columns: { songId: true }, where: eq(comments.id, commentId),
+           });
+           if(commentData?.songId) {
+              console.log(`Revalidating path after like toggle: /musicgrid/${commentData.songId}/view`);
+              revalidatePath(`/musicgrid/${commentData.songId}/view`);
+           } else {
+               revalidatePath('/');
+               console.warn(`Could not determine songId for comment ${commentId} for path revalidation.`);
+           }
+
+          return { success: true, liked, newLikes };
+
+      } catch (error) {
+          console.error('Database Error: Failed to toggle comment like.', error);
+          return { success: false, error: 'Failed to update like status due to a database error.' };
+      }
+  }
+
+  const DeleteSchema = z.object({
+    commentId: z.string().uuid({ message: "Invalid comment ID format." }),
+    // Optional: songId can be passed for more specific revalidation, but fetching it is safer
+    // songId: z.string().optional(),
 });
 
 /**
- * Likes or unlikes a comment for the currently logged-in user.
- * @param commentId - The UUID of the comment to like/unlike.
- * @returns An object indicating success, potential error, the new liked status, and the updated like count.
+ * Deletes a comment if the current user is the owner.
+ * Handles cascading deletes for replies and likes based on schema setup.
+ * @param commentId - The UUID of the comment to delete.
+ * @returns An object indicating success or error status.
  */
-export async function toggleCommentLike(
-  commentId: string
-): Promise<{ success: boolean; error?: string; liked?: boolean; newLikes?: number }> {
-  // 1. Check Authentication
-  const session = await auth();
-  if (!session?.user?.id) {
-    console.log("User not authenticated for like action. Redirecting to signin.");
-    redirect('/api/auth/signin'); // Adjust login path if needed
-  }
-  const currentUserId = session.user.id;
+export async function deleteComment(
+    commentId: string
+): Promise<{ success: boolean; error?: string }> {
+    // 1. Check Authentication
+    const session = await auth();
+    if (!session?.user?.id) {
+        console.log("User not authenticated for delete action. Redirecting to signin.");
+        redirect('/api/auth/signin'); // Or return { success: false, error: "Authentication required." };
+    }
+    const currentUserId = session.user.id;
 
-  // 2. Validate Input (Comment ID)
-  const validatedFields = LikeSchema.safeParse({ commentId });
-  if (!validatedFields.success) {
-    console.error("Toggle like validation error:", validatedFields.error.flatten().fieldErrors);
-    return { success: false, error: validatedFields.error.flatten().fieldErrors.commentId?.[0] || 'Invalid comment ID.' };
-  }
-
-  // 3. Perform Like/Unlike Logic within a Transaction
-  try {
-    let liked = false; // Final liked status
-    let newLikes = 0; // Final like count
-
-    // Use a database transaction to ensure atomicity (all or nothing)
-    await db.transaction(async (tx) => {
-      // a. Check if the user already likes this comment
-      const existingLike = await tx.select({ userId: commentLikes.userId })
-        .from(commentLikes)
-        .where(and(
-          eq(commentLikes.userId, currentUserId),
-          eq(commentLikes.commentId, commentId)
-        ))
-        .limit(1);
-
-      if (existingLike) {
-        // b. Unlike: Delete the existing like record
-        await tx.delete(commentLikes)
-          .where(and(
-            eq(commentLikes.userId, currentUserId),
-            eq(commentLikes.commentId, commentId)
-          ));
-        liked = false; // Set final status to unliked
-        console.log(`User ${currentUserId} unliked comment ${commentId}`);
-      } else {
-        // c. Like: Insert a new like record
-        await tx.insert(commentLikes).values({
-          userId: currentUserId,
-          commentId: commentId,
-        });
-        liked = true; // Set final status to liked
-        console.log(`User ${currentUserId} liked comment ${commentId}`);
-      }
-
-      // d. Get the updated total like count for the comment
-      const result = await tx
-        .select({ count: count() })
-        .from(commentLikes)
-        .where(eq(commentLikes.commentId, commentId));
-      newLikes = result[0]?.count ?? 0; // Update the like count
-
-      // Optional: Update a denormalized 'likesCount' field on the comments table itself
-      // This can improve read performance but adds complexity to writes.
-      // await tx.update(comments)
-      //    .set({ likesCount: newLikes })
-      //    .where(eq(comments.id, commentId));
-    }); // Transaction commits automatically if no errors
-
-    // 4. Revalidate Cache
-    // Fetch the songId associated with the comment to revalidate the correct page
-    // Fetch the songId associated with the comment to revalidate the correct page
-    const commentData = await db
-      .select({ songId: comments.songId })
-      .from(comments)
-      .where(eq(comments.id, commentId))
-      .limit(1);
-
-    if (commentData[0]?.songId) {
-      console.log(`Revalidating path after like toggle: /musicgrid/${commentData[0].songId}/view`);
-      revalidatePath(`/musicgrid/${commentData[0].songId}/view`);
-    } else {
-      // Fallback or broader revalidation if songId cannot be determined
-      revalidatePath('/');
-      console.warn(`Could not determine songId for comment ${commentId} for path revalidation.`);
+    // 2. Validate Input
+    const validatedFields = DeleteSchema.safeParse({ commentId });
+    if (!validatedFields.success) {
+        console.error("Delete comment validation error:", validatedFields.error.flatten().fieldErrors);
+        return { success: false, error: validatedFields.error.flatten().fieldErrors.commentId?.[0] || 'Invalid comment ID.' };
     }
 
-    // 5. Return Success Response
-    return { success: true, liked, newLikes };
+    // 3. Fetch Comment and Authorize Deletion
+    try {
+        // Fetch the comment including its userId and songId
+        const commentToDelete = await db.query.comments.findFirst({
+            where: eq(comments.id, commentId),
+            columns: {
+                id: true,
+                userId: true, // Need userId for authorization check
+                songId: true, // Need songId for revalidation
+            }
+        });
 
-  } catch (error) {
-    console.error('Database Error: Failed to toggle comment like.', error);
-    // Return error status
-    return { success: false, error: 'Failed to update like status due to a database error.' };
-  }
+        // Check if comment exists
+        if (!commentToDelete) {
+            return { success: false, error: "Comment not found." };
+        }
+
+        // Authorization: Check if the current user owns the comment
+        if (commentToDelete.userId !== currentUserId) {
+            console.warn(`Authorization failed: User ${currentUserId} attempted to delete comment ${commentId} owned by ${commentToDelete.userId}`);
+            return { success: false, error: "You are not authorized to delete this comment." };
+        }
+
+        // 4. Delete Comment from Database
+        await db.delete(comments).where(eq(comments.id, commentId));
+        console.log(`Comment ${commentId} deleted successfully by user ${currentUserId}.`);
+
+        // 5. Revalidate Cache
+        // Use the songId fetched from the comment for accurate path revalidation
+        if (commentToDelete.songId) {
+            console.log(`Revalidating path after delete: /musicgrid/${commentToDelete.songId}/view`);
+            revalidatePath(`/musicgrid/${commentToDelete.songId}/view`);
+        } else {
+            // Fallback if somehow songId was missing (shouldn't happen with schema constraints)
+            revalidatePath('/');
+            console.warn(`Could not determine songId for deleted comment ${commentId} for path revalidation.`);
+        }
+
+        // 6. Return Success
+        return { success: true };
+
+    } catch (error) {
+        console.error('Database Error: Failed to delete comment.', error);
+        return { success: false, error: 'Failed to delete comment due to a database error.' };
+    }
 }

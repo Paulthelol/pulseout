@@ -26,7 +26,8 @@ interface PageProps {
 // The page component must be async to fetch data and session
 export default async function SongViewPage({ params }: PageProps) {
     // Get songId directly from params
-    const songid = params.songid;
+    const resolvedParams = await params;
+    const songid = resolvedParams.songid;
 
     // Fetch song data using the server action
     // Using a separate async function for fetching can be good practice

@@ -43,3 +43,4 @@ drizzle
 
 .vscode
 certificates
+.env.tmp
