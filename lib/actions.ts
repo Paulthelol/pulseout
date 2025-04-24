@@ -3,7 +3,7 @@
 
 import { signIn, signOut, auth } from '@/auth';
 import { AuthError } from 'next-auth';
-import { getSpotifyAccessToken, searchSpotifyTracks } from '@/lib/spotify';
+import { searchSpotifyTracks } from '@/lib/spotify';
 import { db } from '@/src/db'; // Import your db instance
 import { songs, song_likes, comments, commentLikes, users } from '@/src/db/schema'; // Import table schemas
 import { eq, sql, and, desc, count, gt, asc, isNull, inArray } from 'drizzle-orm'; // Import eq, sql, and, desc, count
@@ -29,7 +29,6 @@ interface SongWithLikeInfo extends Song {
   userHasLiked: boolean;
 }
 
-// --- Auth & Search Actions (Keep As Is) ---
 
 export async function authenticateSpotify(
   prevState: string | undefined,
@@ -53,23 +52,33 @@ export async function authenticateSpotify(
   }
 }
 
+export async function authenticateGoogle() {
+  console.log('authenticateGoogle Server Action called!');
+  try {
+    await signIn('google');
+  } catch (error) {
+    if (error instanceof AuthError) {
+      console.error('Error during signIn:', error);
+      switch (error.type) {
+        case 'CredentialsSignin':
+          return 'Invalid credentials.';
+        default:
+          throw error; // Rethrow other auth errors
+      }
+    }
+    console.error('Non-AuthError during signIn:', error);
+    throw error; // Rethrow non-AuthError errors
+  }
+}
+
 export async function SignOut() {
   await signOut({ redirectTo: '/login' });
 }
 
 export async function searchSpotifyAction(query: string): Promise<{ data?: any; error?: string }> {
   noStore(); // Prevent caching of search results
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: 'User not authenticated.' };
-  }
 
-  const accessToken = await getSpotifyAccessToken(session.user.id);
-  if (!accessToken) {
-    return { error: 'Could not retrieve Spotify access token. Please try logging in again.' };
-  }
-
-  const results = await searchSpotifyTracks(query, accessToken);
+  const results = await searchSpotifyTracks(query);
 
   if (results && results.error) {
     return { error: results.error };

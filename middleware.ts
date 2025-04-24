@@ -7,6 +7,6 @@ export default NextAuth(authConfig).auth;
 export const config = {
   runtime: "nodejs",
     matcher: [
-      '/((?!api|_next/static|_next/image|Spotify_logo_without_text.svg|sitemap.xml|robots.txt|logo.png).+)',
+      '/((?!api|_next/static|_next/image|Spotify_logo_without_text.svg|sitemap.xml|robots.txt|logo.png|Google__G__logo.svg).+)',
     ],
   };
