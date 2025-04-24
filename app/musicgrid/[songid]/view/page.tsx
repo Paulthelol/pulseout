@@ -108,15 +108,17 @@ export default async function SongViewPage({ params }: PageProps) {
                             initialLiked={song.userHasLiked} // Pass initial like status
                             initialLikeCount={song.likeCount} // Pass initial like count
                         />
+                    
                     </div>
 
-                    {/* Artist Info Card (Placeholder) */}
+                    {/* Artist Info Card (Placeholder) 
                     <div className="bg-card border border-border rounded-lg shadow p-4">
                         <h2 className="text-lg font-semibold mb-2">About the Artist</h2>
                         <p className="text-sm text-muted-foreground">
                             Artist biography placeholder. Fetch from Spotify API or another source if needed.
                         </p>
                     </div>
+                    */}
                 </div>
 
                 {/* --- RIGHT SIDE - Comments Section --- */}
