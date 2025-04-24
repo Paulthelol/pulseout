@@ -15,12 +15,11 @@ type User = {
   image?: string | null;
 };
 
-// Define props for the page component, directly accessing params
 interface PageProps {
-  params: {
+  // Define params as a Promise resolving to the expected object structure
+  params: Promise<{
     songid: string; // Matches the dynamic segment [songid]
-  };
-  // searchParams?: { [key: string]: string | string[] | undefined }; // Optional search params
+  }>;
 }
 
 // The page component must be async to fetch data and session
