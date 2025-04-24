@@ -29,7 +29,6 @@ interface SongWithLikeInfo extends Song {
   userHasLiked: boolean;
 }
 
-// --- Auth & Search Actions (Keep As Is) ---
 
 export async function authenticateSpotify(
   prevState: string | undefined,
@@ -38,6 +37,25 @@ export async function authenticateSpotify(
   console.log('authenticateSpotify Server Action called!');
   try {
     await signIn('spotify', formData);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      console.error('Error during signIn:', error);
+      switch (error.type) {
+        case 'CredentialsSignin':
+          return 'Invalid credentials.';
+        default:
+          throw error; // Rethrow other auth errors
+      }
+    }
+    console.error('Non-AuthError during signIn:', error);
+    throw error; // Rethrow non-AuthError errors
+  }
+}
+
+export async function authenticateGoogle() {
+  console.log('authenticateGoogle Server Action called!');
+  try {
+    await signIn('google');
   } catch (error) {
     if (error instanceof AuthError) {
       console.error('Error during signIn:', error);
