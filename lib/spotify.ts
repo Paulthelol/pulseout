@@ -1,61 +1,185 @@
-// lib/spotify.ts
-import { db } from "@/src/db"; // Your drizzle instance
-import { accounts } from "@/src/db/schema"; // Your accounts schema
-import { eq } from "drizzle-orm";
+// import { db } from "@/src/db"; // No longer needed for app token
+// import { accounts } from "@/src/db/schema"; // No longer needed for app token
+// import { eq } from "drizzle-orm"; // No longer needed for app token
 import { unstable_noStore as noStore } from 'next/cache';
 
-// Define the expected shape of the Spotify refresh token response
-interface SpotifyTokenResponse {
+// --- Interfaces ---
+interface SpotifyClientCredentialsTokenResponse {
+    access_token: string;
+    token_type: string; // Typically "Bearer"
+    expires_in: number; // Lifespan in seconds
+}
+
+// --- In-Memory Cache for Application Token ---
+// NOTE: In serverless environments, each instance might get its own token.
+// Consider a more persistent cache (e.g., Redis, database) for better scalability.
+let appAccessToken: string | null = null;
+let appTokenExpiry: number | null = null; // Store expiry time (Unix timestamp in seconds)
+
+// --- NEW: Function to get Application Access Token (Client Credentials) ---
+async function getSpotifyAppAccessToken(): Promise<string | null> {
+    noStore(); // Ensure this function re-evaluates cache status
+
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+
+    // Check cache first (with a 60-second buffer before expiry)
+    if (appAccessToken && appTokenExpiry && nowInSeconds < (appTokenExpiry - 60)) {
+        console.log("Using cached Spotify app access token.");
+        return appAccessToken;
+    }
+
+    console.log("Fetching new Spotify app access token (Client Credentials)...");
+    const clientId = process.env.AUTH_SPOTIFY_ID;
+    const clientSecret = process.env.AUTH_SPOTIFY_SECRET;
+
+    if (!clientId || !clientSecret) {
+        console.error("Spotify client ID or secret is missing in environment variables for app token.");
+        return null;
+    }
+
+    try {
+        // *** CORRECTED SPOTIFY TOKEN URL ***
+        const response = await fetch("https://accounts.spotify.com/api/token", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+            },
+            body: new URLSearchParams({
+                grant_type: "client_credentials",
+            }),
+            cache: 'no-store' // Don't cache the token request itself
+        });
+
+        const tokenData = await response.json() as SpotifyClientCredentialsTokenResponse;
+
+        if (!response.ok) {
+            console.error(`Failed to fetch Spotify app token. Status: ${response.status}`, tokenData);
+            // Clear potentially invalid cached token on failure
+            appAccessToken = null;
+            appTokenExpiry = null;
+            return null;
+        }
+
+        // Cache the new token and calculate expiry time
+        appAccessToken = tokenData.access_token;
+        appTokenExpiry = Math.floor(Date.now() / 1000) + tokenData.expires_in;
+
+        console.log("Successfully fetched and cached new Spotify app access token.");
+        return appAccessToken;
+
+    } catch (error) {
+        console.error("Error during Spotify app token fetch:", error);
+        // Clear cache on error
+        appAccessToken = null;
+        appTokenExpiry = null;
+        return null;
+    }
+}
+
+
+// --- Spotify API Search Function (MODIFIED) ---
+// Now uses the application access token
+export async function searchSpotifyTracks(query: string): Promise<any> {
+    noStore();
+
+    // Fetch the application access token
+    const accessToken = await getSpotifyAppAccessToken();
+
+    if (!query) {
+        return { error: 'Search query is required.' };
+    }
+    if (!accessToken) {
+        return { error: 'Could not retrieve Spotify application access token.' };
+    }
+
+    const searchParams = new URLSearchParams({
+        q: query,
+        type: 'track',
+        limit: '12' // Adjust limit as needed
+    });
+
+    const searchUrl = `https://api.spotify.com/v1/search?${searchParams.toString()}`;
+
+    try {
+        const response = await fetch(searchUrl, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            },
+            cache: 'no-store' // Don't cache search results by default
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Spotify API Search Error:', errorData);
+            // Handle specific errors like 401 Unauthorized (app token might be invalid/revoked)
+             if (response.status === 401) {
+                 // Clear the cached app token if it was invalid
+                 appAccessToken = null;
+                 appTokenExpiry = null;
+                 return { error: 'Spotify app token was invalid. Please try again shortly.' };
+             }
+            return { error: `Spotify API error: ${response.statusText}` };
+        }
+
+        const data = await response.json();
+        if (data && data.tracks && Array.isArray(data.tracks.items)) {
+            return data.tracks.items; // Return track items
+        } else {
+            console.warn("Spotify search response did not contain tracks.items array:", data);
+            return []; // Return empty array if structure is unexpected
+        }
+    } catch (error) {
+        console.error('Error searching Spotify:', error);
+        return { error: 'Failed to fetch from Spotify API.' };
+    }
+}
+
+
+// --- User-Specific Token Functions (Commented Out - Keep if needed elsewhere) ---
+
+/*
+interface SpotifyUserTokenResponse {
     access_token: string;
     token_type: string;
     scope: string;
     expires_in: number;
-    // Note: Spotify often doesn't return a new refresh_token unless specifically configured
     refresh_token?: string;
 }
 
-
-// Helper function to refresh the Spotify access token
 async function refreshAccessToken(userId: string, refreshToken: string): Promise<string | null> {
     noStore();
     console.log(`Attempting to refresh token for user ID: ${userId}`);
-    const clientId = process.env.AUTH_SPOTIFY_ID; // Ensure these are set in your .env
+    const clientId = process.env.AUTH_SPOTIFY_ID;
     const clientSecret = process.env.AUTH_SPOTIFY_SECRET;
 
     if (!clientId || !clientSecret) {
         console.error("Spotify client ID or secret is missing in environment variables.");
         return null;
     }
-
     if (!refreshToken) {
         console.error(`Missing refresh token for user ID: ${userId}. Cannot refresh.`);
-        return null; // Cannot refresh without a refresh token
+        return null;
     }
 
-
     try {
-        const response = await fetch("https://accounts.spotify.com/api/token", {
+        const response = await fetch("https://accounts.spotify.com/api/token", { // Correct URL
             method: "POST",
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
-                // Basic Authentication: base64 encode "client_id:client_secret"
                 "Authorization": `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
             },
             body: new URLSearchParams({
                 grant_type: "refresh_token",
                 refresh_token: refreshToken,
             }),
-            // Don't cache the token refresh request itself
             cache: 'no-store'
         });
 
-        const tokenData = await response.json() as SpotifyTokenResponse;
+        const tokenData = await response.json() as SpotifyUserTokenResponse;
 
         if (!response.ok) {
             console.error(`Failed to refresh Spotify token for user ${userId}. Status: ${response.status}`, tokenData);
-            // If refresh fails (e.g., invalid refresh token), clear stored tokens? Or just return null?
-            // Returning null forces re-login which is safer.
-            // Optionally: Update DB to clear tokens if refresh permanently fails.
              await db.update(accounts)
                .set({ access_token: null, refresh_token: null, expires_at: null })
                .where(eq(accounts.userId, userId) && eq(accounts.provider, 'spotify'));
@@ -63,15 +187,12 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
             return null;
         }
 
-        // Calculate new expiry time (response gives seconds_in, convert to timestamp)
         const newExpiresAt = Math.floor(Date.now() / 1000) + tokenData.expires_in;
 
-        // Update the database with the new token and expiry
         await db.update(accounts)
             .set({
                 access_token: tokenData.access_token,
                 expires_at: newExpiresAt,
-                // Update refresh token only if Spotify sends a new one (uncommon)
                 ...(tokenData.refresh_token && { refresh_token: tokenData.refresh_token }),
                 token_type: tokenData.token_type,
                 scope: tokenData.scope,
@@ -87,20 +208,18 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
     }
 }
 
-
-// --- Updated function to get access token, including refresh logic ---
 export async function getSpotifyAccessToken(userId: string): Promise<string | null> {
-    noStore(); // Prevent caching of this function's result
+    noStore();
      if (!userId) {
-        console.error("User ID is required to fetch Spotify token.");
-        return null;
-      }
+         console.error("User ID is required to fetch Spotify token.");
+         return null;
+     }
 
     try {
         const userAccounts = await db.select()
             .from(accounts)
             .where(eq(accounts.userId, userId))
-            .limit(1); // Assuming one Spotify account per user
+            .limit(1);
 
         const spotifyAccount = userAccounts.find(acc => acc.provider === 'spotify');
 
@@ -108,28 +227,22 @@ export async function getSpotifyAccessToken(userId: string): Promise<string | nu
             console.log(`No spotify account found for user ID: ${userId}`);
             return null;
         }
-
         if (!spotifyAccount.access_token || !spotifyAccount.refresh_token) {
              console.log(`Access or refresh token missing for Spotify account of user ID: ${userId}`);
-             return null; // Need both for potential refresh
+             return null;
         }
 
-        // Check if the token is expired or close to expiring (e.g., within the next 60 seconds)
         const nowInSeconds = Math.floor(Date.now() / 1000);
-        const expiresAt = spotifyAccount.expires_at; // This should be a Unix timestamp in seconds
+        const expiresAt = spotifyAccount.expires_at;
 
         if (expiresAt && nowInSeconds >= (expiresAt - 60)) {
             console.log(`Token for user ID ${userId} expired or expiring soon. Attempting refresh.`);
-            // Token expired or needs refresh
             return await refreshAccessToken(userId, spotifyAccount.refresh_token);
         } else if (!expiresAt) {
              console.warn(`Expires_at not set for user ID ${userId}. Assuming token is valid, but refresh might be needed.`);
-             // If expires_at isn't set, maybe try refreshing just in case, or return current token?
-             // Returning current token for now, but this indicates an issue during initial auth save.
              return spotifyAccount.access_token;
         } else {
              console.log(`Token for user ID ${userId} is still valid.`);
-             // Token is still valid
              return spotifyAccount.access_token;
         }
 
@@ -138,57 +251,4 @@ export async function getSpotifyAccessToken(userId: string): Promise<string | nu
         return null;
     }
 }
-
-// --- Spotify API Interaction (Example within Server Action or API Route) ---
-// This function remains the same, it uses the token provided by getSpotifyAccessToken
-export async function searchSpotifyTracks(query: string, accessToken: string): Promise<any> {
-    noStore();
-    if (!query || !accessToken) {
-        return { error: 'Search query and access token are required.' };
-    }
-
-    const searchParams = new URLSearchParams({
-        q: query,
-        type: 'track',
-        limit: '10' // Adjust limit as needed
-    });
-
-    // Construct the Spotify API search URL
-    // NOTE: The previous URL was incorrect. Using the correct base URL.
-    const searchUrl = `https://api.spotify.com/v1/search?${searchParams.toString()}`;
-
-
-    try {
-        const response = await fetch(searchUrl, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            },
-             // Don't cache search results between requests by default
-            cache: 'no-store'
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Spotify API Error:', errorData);
-            // Handle specific errors like 401 Unauthorized (token expired/invalid)
-            if (response.status === 401) {
-                 // The refresh logic should handle this before calling searchSpotifyTracks,
-                 // but if it somehow gets here, guide the user.
-                return { error: 'Spotify token seems invalid or expired. Please try logging out and back in.' };
-            }
-            return { error: `Spotify API error: ${response.statusText}` };
-        }
-
-        const data = await response.json();
-        // Check if tracks and items exist before returning
-        if (data && data.tracks && Array.isArray(data.tracks.items)) {
-           return data.tracks.items; // Return track items
-        } else {
-            console.warn("Spotify search response did not contain tracks.items array:", data);
-            return []; // Return empty array if structure is unexpected
-        }
-    } catch (error) {
-        console.error('Error searching Spotify:', error);
-        return { error: 'Failed to fetch from Spotify API.' };
-    }
-}
+*/
