@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react'; // Import useSession
 import { SignOut } from '@/lib/actions';
-import { User, LogOut, TrendingUp, Library, Heart, Loader2 } from 'lucide-react'; // Added Loader2 for loading state
+import { User, LogOut, TrendingUp, Heart, Loader2, MicVocal } from 'lucide-react'; // Added Loader2 for loading state
 
 export default function SideBar() {
   // Get session data and status
@@ -25,9 +25,9 @@ export default function SideBar() {
         <div className="pb-2 shrink-0 md:mb-[30px]">
           <Link href="/musicgrid/trending">
             <Image
-                src="/logo.png" // Ensure this path is correct in your public folder
+                src="/logo.svg" // Ensure this path is correct in your public folder
                 alt="PulseOut Logo"
-                width={120}
+                width={100}
                 height={34}
                 priority
             />
@@ -41,8 +41,8 @@ export default function SideBar() {
             <span className="hidden md:inline">Trending</span>
           </Link>
           <Link href="#" className="flex items-center gap-2 text-sm text-white no-underline transition-colors duration-200 ease-in-out hover:underline hover:text-[#00ffcc]">
-             <Library size={22} className="md:hidden" />
-             <span className="hidden md:inline">Genres</span>
+             <MicVocal size={22} className="md:hidden" />
+             <span className="hidden md:inline">Artists</span>
           </Link>
           <Link href="/musicgrid/likes" className="flex items-center gap-2 text-sm text-white no-underline transition-colors duration-200 ease-in-out hover:underline hover:text-[#00ffcc]">
              <Heart size={22} className="md:hidden" />
@@ -61,7 +61,7 @@ export default function SideBar() {
              <span className="hidden md:inline">Loading...</span>
            </div>
         )}
-        {status === 'authenticated' && userId && (
+        {status === 'authenticated' && (
           <Link
             href={`/musicgrid/profile/${userId}/viewprofile`} // Dynamic href using userId
             className="flex items-center gap-2 text-[13px] text-white no-underline transition-colors duration-200 ease-in-out hover:underline hover:text-[#00ffcc]"

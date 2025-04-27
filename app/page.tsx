@@ -9,7 +9,7 @@ export default function WelcomePage() {
       <div className="bg-white/20 backdrop-blur-md px-10 py-12 rounded-xl shadow-lg space-y-6 max-w-md mx-auto text-center">
         {/* PulseOut Logo */}
         <Image
-          src="/logo.png"
+          src="/logo.svg"
           alt="PulseOut Logo"
           width={120}
           height={120}
