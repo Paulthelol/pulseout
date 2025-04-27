@@ -27,7 +27,7 @@ export default function LoginForm() {
     <div className="py-10 bg-white/20 backdrop-blur-md px-10 rounded-xl space-y-6 max-w-md mx-auto text-center shadow-lg">
       {/* PulseOut Logo */}
       <Image
-        src="/logo.png"
+        src="/logo.svg"
         alt="PulseOut Logo"
         width={200}
         height={200}
@@ -81,7 +81,7 @@ export default function LoginForm() {
           )}
           {isSpotifyPending ? 'Logging in...' : 'Log in with Spotify'}
         </button>
-        <p className=''>(Spotify login requires approval)</p>
+        <p className=''>(Spotify requires website approval)</p>
         {spotifyErrorMessage && (
           <p className="text-sm text-red-400">{spotifyErrorMessage}</p>
         )}
