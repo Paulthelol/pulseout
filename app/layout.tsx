@@ -22,7 +22,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body className={`${noto_sans.className} antialiased`}>
+       <body className={`${noto_sans.className} antialiased bg-gray-200 min-h-screen w-full`}>
         {/* Wrap the application with SessionProvider and pass the fetched session */}
         <SessionProvider session={session}>
           {children}
