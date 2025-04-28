@@ -934,3 +934,130 @@ export async function deleteComment(
     return { success: false, error: 'Failed to delete comment due to a database error.' };
   }
 }
+
+/**
+ * Fetches songs liked by a specific user (profile owner), including like/comment counts
+ * and whether the *viewing* user has liked each song.
+ * @param profileUserId - The ID of the user whose liked songs are being displayed.
+ * @param viewingUserId - The ID of the user currently viewing the profile (or null/undefined if not logged in).
+ * @returns Object containing an array of song data or an error.
+ */
+export async function getLikedSongsForUserAction(
+  profileUserId: string,
+  viewingUserId: string | null | undefined
+): Promise<{ data?: SongWithCountsAndLikeInfo[]; error?: string }> {
+  noStore(); // Ensure fresh data on each request
+
+  if (!profileUserId) {
+    return { error: 'Profile user ID is required.' };
+  }
+
+  try {
+    // 1. Get the IDs of songs liked by the profile user (needed for subquery optimization)
+    // This step is primarily for optimizing the subqueries below.
+    const likedSongIdsResult = await db.selectDistinct({ songId: song_likes.songId })
+      .from(song_likes)
+      .where(eq(song_likes.userId, profileUserId));
+
+    const likedSongIds = likedSongIdsResult.map(item => item.songId);
+
+    // If the profile user hasn't liked any songs, return early.
+    if (likedSongIds.length === 0) {
+      console.log(`User ${profileUserId} has no liked songs.`);
+      return { data: [] };
+    }
+
+    // 2. Define Subqueries for Counts and Viewing User's Like Status
+    //    These subqueries are optimized to only consider the relevant songs.
+
+    // Subquery to check if the *viewing* user liked the song
+    const viewerLikeSubquery = db.$with('viewer_like').as(
+      db.select({
+        songId: song_likes.songId,
+        liked: sql<boolean>`true`.as('liked')
+      })
+        .from(song_likes)
+        // Only check if viewingUserId is provided and the song is one liked by the profile user
+        .where(and(
+            eq(song_likes.userId, viewingUserId ?? ''), // Use '' or a non-matching value if null/undefined
+            inArray(song_likes.songId, likedSongIds)
+         ))
+    );
+
+    // Subquery to count comments per song
+    const commentCountSubquery = db.$with('comment_count').as(
+      db.select({
+        songId: comments.songId,
+        count: sql<number>`count(${comments.id})::int`.as('comment_count')
+      })
+        .from(comments)
+        .where(inArray(comments.songId, likedSongIds)) // Optimize: Only count comments for relevant songs
+        .groupBy(comments.songId)
+    );
+
+    // Subquery to count total likes per song
+    const likeCountSubquery = db.$with('like_count').as(
+      db.select({
+        songId: song_likes.songId,
+        count: sql<number>`count(${song_likes.userId})::int`.as('like_count')
+      })
+        .from(song_likes)
+        .where(inArray(song_likes.songId, likedSongIds)) // Optimize: Only count likes for relevant songs
+        .groupBy(song_likes.songId)
+    );
+
+    // 3. Main Query: Fetch song details and join with subqueries, ordered by likedAt
+    const likedSongsData = await db.with(viewerLikeSubquery, commentCountSubquery, likeCountSubquery)
+      .select({
+        // Select fields from songs table
+        id: songs.id,
+        name: songs.name,
+        artist: songs.artist,
+        album: songs.album,
+        coverUrl: songs.coverUrl,
+        spotifyUrl: songs.spotifyUrl,
+        addedAt: songs.addedAt,
+        trending_score: songs.trending_score,
+        last_decayed_at: songs.last_decayed_at,
+        // Select calculated fields from subqueries
+        likeCount: sql<number>`coalesce(${likeCountSubquery.count}, 0)`.as('like_count'),
+        commentCount: sql<number>`coalesce(${commentCountSubquery.count}, 0)`.as('comment_count'),
+        userHasLiked: sql<boolean>`coalesce(${viewerLikeSubquery.liked}, false)`.as('user_has_liked'),
+        // Select likedAt from the main song_likes table for ordering
+        likedAt: song_likes.likedAt
+      })
+      .from(song_likes) // Start query from song_likes to filter by profileUserId and get likedAt
+      .innerJoin(songs, eq(song_likes.songId, songs.id)) // Join to get song details
+      // Left join subqueries to get counts and viewer's like status
+      .leftJoin(viewerLikeSubquery, eq(songs.id, viewerLikeSubquery.songId))
+      .leftJoin(commentCountSubquery, eq(songs.id, commentCountSubquery.songId))
+      .leftJoin(likeCountSubquery, eq(songs.id, likeCountSubquery.songId))
+      // Filter for the specific profile user whose likes we are fetching
+      .where(eq(song_likes.userId, profileUserId))
+      // Order the results by when the profile user liked the song (most recent first)
+      .orderBy(desc(song_likes.likedAt));
+
+    // 4. Final Mapping (Adjust userHasLiked based on viewing user)
+    // The SQL query handles the ordering, so no JS re-sorting is needed.
+    const finalData = likedSongsData.map(song => ({
+      // Spread all selected fields
+      ...song,
+      // Ensure userHasLiked is false if no viewing user is logged in.
+      // The SQL coalesce handles the case where the viewing user exists but didn't like the song.
+      userHasLiked: viewingUserId ? song.userHasLiked : false,
+      // We don't strictly need likedAt in the final SongWithCountsAndLikeInfo type
+      // unless SongCard uses it, so it's implicitly dropped here unless added to the type.
+    }));
+
+    // Type assertion to match the expected return type
+    const resultData: SongWithCountsAndLikeInfo[] = finalData;
+
+    console.log(`Fetched ${resultData.length} liked songs for user ${profileUserId}`);
+    return { data: resultData };
+
+  } catch (error) {
+    console.error(`Database Error: Failed to fetch liked songs for profile user ${profileUserId}:`, error);
+    // Consider more specific error logging or handling if needed
+    return { error: "Database error fetching liked songs. Please try again later." };
+  }
+}
