@@ -5,8 +5,8 @@ import Link from 'next/link';
 
 export default function WelcomePage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-r from-purple-500 to-blue-400">
-      <div className="bg-white/20 backdrop-blur-md px-10 py-12 rounded-xl shadow-lg space-y-6 max-w-md mx-auto text-center">
+   <main className="min-h-screen flex items-center justify-center bg-gray-100">
+     <div className="bg-gray-800 px-10 py-12 rounded-xl shadow-lg space-y-6 max-w-md mx-auto text-center">
         {/* PulseOut Logo */}
         <Image
           src="/logo.svg"
