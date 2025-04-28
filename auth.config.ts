@@ -1,10 +1,9 @@
 import type { NextAuthConfig } from "next-auth";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import Spotify from "next-auth/providers/spotify"
-import Google from "next-auth/providers/google"
-import { db } from "./src/db/index";
+import Spotify from "next-auth/providers/spotify";
+import Google from "next-auth/providers/google";
+import { db } from "./src/db/index"; // Ensure this path is correct
 
-//Responsible for enforcing middleware rules
 export const authConfig = {
   adapter: DrizzleAdapter(db),
   providers: [Spotify, Google],
@@ -12,20 +11,35 @@ export const authConfig = {
     signIn: "/login",
     error: "/autherror",
   },
+  session: {
+    strategy: "jwt",
+  },
   callbacks: {
+    async jwt({ token, user }) {
+      if (user?.id) {
+        token.id = user.id;
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (token?.id && session.user) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
+
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isOnMusicGrid = nextUrl.pathname.startsWith('/musicgrid');
-      const isOnLoginpage = nextUrl.pathname.startsWith('/login');
+      const isOnLoginPage = nextUrl.pathname.startsWith('/login');
 
       if (isOnMusicGrid) {
-        return isLoggedIn;
-      } else if (isOnLoginpage) {
+        if (!isLoggedIn) return false;
+      } else if (isOnLoginPage) {
         if (isLoggedIn) {
           return Response.redirect(new URL('/musicgrid/trending', nextUrl));
         }
-      } else if (!isLoggedIn) {
-        return isLoggedIn;
       }
       return true;
     },

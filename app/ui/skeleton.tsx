@@ -37,7 +37,3 @@ export function SearchResultsSkeleton() {
     </div>
   );
 }
-
-
-// You can add other skeleton components to this file as needed
-// export function AnotherComponentSkeleton() { ... }

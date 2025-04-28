@@ -1,4 +1,3 @@
-// app/ui/musicgrid/song-card.tsx
 'use client';
 
 import Image from 'next/image';
@@ -26,7 +25,7 @@ interface SongCardProps {
 
 export default function SongCard({ song }: SongCardProps) {
   return (
-    <li className="bg-card p-3 rounded-lg shadow hover:shadow-md transition-shadow flex flex-col">
+    <li className="group bg-card p-3 rounded-lg shadow hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ease-in-out flex flex-col">
       {/* Link wrapping the main content to navigate to the song view page */}
       <Link href={`/musicgrid/${song.id}/view`} className="flex-grow flex flex-col">
         {/* Image */}
@@ -37,7 +36,8 @@ export default function SongCard({ song }: SongCardProps) {
               alt={`Album art for ${song.album || song.name}`}
               fill
               sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, (max-width: 1280px) 22vw, 18vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out" // Added subtle hover effect
+              // Changed: group-hover:scale-110
+              className="object-cover group-hover:scale-110 transition-transform duration-300 ease-in-out"
             />
           ) : (
             <div className="w-full h-full bg-muted rounded-md flex items-center justify-center text-muted-foreground">
@@ -58,22 +58,22 @@ export default function SongCard({ song }: SongCardProps) {
 
       {/* Actions (Like Button and Comment Count) - Placed below the link */}
       <div className="flex justify-between items-center mt-3 pt-2 border-t border-border/50">
-         {/* Like Button */}
-         <LikeButton
-            songId={song.id}
-            initialLiked={song.userHasLiked}
-            initialLikeCount={song.likeCount}
-          />
+        {/* Like Button */}
+        <LikeButton
+          songId={song.id}
+          initialLiked={song.userHasLiked}
+          initialLikeCount={song.likeCount}
+        />
 
-         {/* Comment Count/Link */}
-         <Link
-           href={`/musicgrid/${song.id}/view#comments`} // Link to comments section on view page
-           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-           title={`${song.commentCount} comments`}
-          >
-           <MessageCircle size={14} />
-           <span>{song.commentCount}</span>
-         </Link>
+        {/* Comment Count/Link */}
+        <Link
+          href={`/musicgrid/${song.id}/view#comments`} // Link to comments section on view page
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          title={`${song.commentCount} comments`}
+         >
+          <MessageCircle size={14} />
+          <span>{song.commentCount}</span>
+        </Link>
       </div>
     </li>
   );
