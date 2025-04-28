@@ -1,13 +1,10 @@
 'use client'; // This component uses hooks, so it must be a Client Component
 
 import React, { useState, useEffect, useOptimistic, useRef, useTransition, useCallback } from 'react';
-// Import Icons
 import { Heart, MessageSquare, ChevronDown, Loader2, Trash2 } from 'lucide-react';
-
-// --- Import Server Actions & Types ---
 import { fetchComments, addComment, toggleCommentLike, deleteComment } from '@/lib/actions';
-// Import the shared type definition
 import type { CommentWithDetails as BaseCommentWithDetails } from '@/lib/actions';
+import Link from 'next/link';
 
 // --- Types ---
 type User = {
@@ -162,8 +159,8 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
     >
       <Heart
         className={`h-4 w-4 transition-colors duration-150 ${liked
-            ? finalDisabled ? "fill-gray-400 text-gray-400" : "fill-red-500 text-red-500"
-            : finalDisabled ? "text-gray-400" : "text-gray-500 group-hover:text-red-500"
+          ? finalDisabled ? "fill-gray-400 text-gray-400" : "fill-red-500 text-red-500"
+          : finalDisabled ? "text-gray-400" : "text-gray-500 group-hover:text-red-500"
           }`}
       />
       <span>{likes}</span>
@@ -383,7 +380,7 @@ const SortDropdown: React.FC<SortDropdownProps> = ({ currentSort, onSortChange }
   );
 };
 
-// --- Comment Component (MODIFIED) ---
+// --- Comment Component ---
 interface CommentProps {
   // *** Use the extended type for the comment prop ***
   comment: CommentWithDetails;
@@ -485,9 +482,12 @@ const Comment: React.FC<CommentProps> = ({
   const optimisticClass = isOptimisticComment ? 'opacity-60' : '';
 
   return (
-    // *** Use optimisticId in key if present ***
     <div className={`flex space-x-2 sm:space-x-3 ${indentationClass} ${optimisticClass}`} key={comment.optimisticId || comment.id}>
-      <div className="flex-shrink-0 pt-1"><AvatarPlaceholder username={comment.user.name} /></div>
+      <Link
+        href={`/musicgrid/profile/${comment.user.id}/viewprofile`}
+      >
+        <div className="flex-shrink-0 pt-1"><AvatarPlaceholder username={comment.user.name} /></div>
+      </Link>
       <div className="flex-1 min-w-0 relative group">
         {isCommentOwner && !isOptimisticComment && (
           <button
@@ -502,7 +502,11 @@ const Comment: React.FC<CommentProps> = ({
           </button>
         )}
         <div className="flex items-baseline space-x-1.5 mb-1 flex-wrap pr-8 md:pr-6">
-          <span className="font-semibold text-sm text-gray-800 break-words">{comment.user.name || 'Anonymous'}</span>
+          <Link
+            href={`/musicgrid/profile/${comment.user.id}/viewprofile`}
+          >
+            <span className="font-semibold text-sm text-gray-800 break-words">{comment.user.name || 'Anonymous'}</span>
+          </Link>
           <span className="text-xs text-gray-400">·</span>
           <span className="text-xs text-gray-500 flex-shrink-0">
             {isOptimisticComment ? 'Sending...' : formatTimestamp(comment.createdAt)}
