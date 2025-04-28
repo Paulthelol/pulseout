@@ -1,12 +1,15 @@
+// app/musicgrid/profile/[profileid]/page.tsx
+
 import { db } from '@/src/db';
 import { users } from '@/src/db/schema';
 import { eq } from 'drizzle-orm';
 import Image from 'next/image';
 import { auth } from '@/auth';
 import { getLikedSongsForUserAction } from '@/lib/actions';
-import SongCard from '@/app/ui/song-card';
+import SongCard from '@/app/ui/song-card'; // Ensure this path is correct
+import { notFound } from 'next/navigation'; // Import notFound
 
-// --- Helper Functions & Component for Avatar Placeholder ---
+
 const nameToColorCache: Record<string, string> = {};
 const tailwindColors = [
   'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500',
@@ -52,20 +55,18 @@ const AvatarPlaceholder: React.FC<AvatarPlaceholderProps> = ({
 };
 
 interface PageProps {
-  // Define params as a Promise resolving to the expected object structure
-  params: Promise<{
-    profileid: string; // Matches the dynamic segment [profileid]
+  params: Promise<{ // Type params as a Promise again
+    profileid: string;
   }>;
 }
 
-
-export default async function ProfilePage({
-  params,
-}: {
-  params: { profileid: string };
-}) {
+// Use the PageProps type expecting a Promise for params
+export default async function ProfilePage({ params }: PageProps) {
+  // Await params before accessing its properties
   const resolvedParams = await params;
   const profileUserId = resolvedParams.profileid;
+
+  // Fetch session and user data
   const session = await auth();
   const viewingUserId = session?.user?.id;
 
@@ -80,21 +81,25 @@ export default async function ProfilePage({
     .limit(1);
 
   if (!user) {
-    return <p>User not found</p>;
+    // Use notFound() for a standard 404 page
+    notFound();
   }
 
+  // Fetch liked songs
   const likedSongsResult = await getLikedSongsForUserAction(profileUserId, viewingUserId);
 
   if (likedSongsResult.error) {
+    // Log the error for debugging, but maybe don't crash the page
     console.error('Error fetching liked songs:', likedSongsResult.error);
   }
 
   const likedSongs = likedSongsResult.data ?? [];
 
+  // --- Render Logic ---
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <div className="flex flex-col items-center text-center md:flex-row md:items-center md:text-left gap-4 mb-6 border-b pb-4"> {/* Changed default to flex-col, center items/text */}
-        <div className="relative h-20 w-20 md:h-24 md:w-24 flex-shrink-0 overflow-hidden rounded-full mb-3 md:mb-0"> {/* Added bottom margin for mobile */}
+      <div className="flex flex-col items-center text-center md:flex-row md:items-center md:text-left gap-4 mb-6 border-b pb-4">
+        <div className="relative h-20 w-20 md:h-24 md:w-24 flex-shrink-0 overflow-hidden rounded-full mb-3 md:mb-0">
           {user.image ? (
             <Image
               src={user.image}
@@ -102,6 +107,7 @@ export default async function ProfilePage({
               fill
               sizes="(max-width: 768px) 80px, 96px"
               className="object-cover"
+              priority
             />
           ) : (
             <AvatarPlaceholder
@@ -110,19 +116,19 @@ export default async function ProfilePage({
             />
           )}
         </div>
-        {/* Username */}
+        {/* Username - Adjusted text size */}
         <h1 className="text-2xl md:text-6xl font-bold break-words">
             {user.name || 'Unnamed User'}
         </h1>
       </div>
 
-      {/* Liked Songs Section */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Liked Songs</h2>
         {likedSongs.length > 0 ? (
           <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {likedSongs.map((song) => (
-              <SongCard key={song.id} song={song} />
+              // Ensure SongCard type matches the data from getLikedSongsForUserAction
+              <SongCard key={song.id} song={song as any} />
             ))}
           </ul>
         ) : (
