@@ -10,12 +10,10 @@ import {
   uuid,
   integer,
   varchar,
-  index, // Import index
-  serial, // Import serial for auto-incrementing IDs if preferred for comments
+  index,
+  serial,
   uniqueIndex,
   doublePrecision
-  // Import uniqueIndex for ensuring one like per user/song
-  // import { jsonb } from "drizzle-orm/pg-core"; // Keep if needed elsewhere
 } from "drizzle-orm/pg-core"
 import type { AdapterAccountType } from "next-auth/adapters"
 import {relations} from "drizzle-orm"
@@ -154,9 +152,6 @@ export const song_likes = pgTable("song_like", {
       parentId: uuid('parent_id').references((): any => comments.id, { onDelete: 'cascade' }), // Cascade delete replies if parent comment is deleted
       // Timestamp automatically set to the time of creation
       createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
-      // Optional: Denormalized like count for quicker reads.
-      // You would need to update this via triggers or within your like/unlike actions.
-      // likesCount: integer('likes_count').default(0).notNull(),
   }, (table) => {
       // Indexes to speed up common queries
       return {
@@ -179,7 +174,6 @@ export const song_likes = pgTable("song_like", {
       // Define a composite primary key to ensure a user can only like a specific comment once.
       return {
           pk: primaryKey({ columns: [table.userId, table.commentId] }),
-          // Optional index for querying likes by commentId if needed frequently
           commentIdIdx: index('comment_like_comment_id_idx').on(table.commentId),
       };
   });

@@ -5,9 +5,8 @@
 import React, { useState, useEffect, Suspense, useTransition } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { searchSpotifyAction, saveSongAction } from '@/lib/actions';
-import SearchCard from '@/app/ui/search-card'; // Import the new SearchCard component
+import SearchCard from '@/app/ui/search-card';
 
-// Define a basic type for the track data (ensure it matches SearchCard)
 interface SpotifyTrack {
   id: string;
   name: string;
@@ -28,7 +27,6 @@ function SearchResultsDisplay({ results, query }: { results: SpotifyTrack[], que
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // This function remains the same, it will be passed to SearchCard's onClick
   const handleResultClick = async (track: SpotifyTrack) => {
     // Prevent triggering save if already saving this track or navigating
     if (isSavingId === track.id || isPending) return;
@@ -64,8 +62,6 @@ function SearchResultsDisplay({ results, query }: { results: SpotifyTrack[], que
       setSaveError('An unexpected error occurred.');
       setIsSavingId(null); // Clear saving state on error
     }
-    // On success, navigation will unmount or transition, eventually resetting state.
-    // If navigation fails or transition ends without unmounting, might need explicit reset.
   };
 
   if (results.length === 0) {
@@ -155,7 +151,7 @@ function SearchPageContent() {
   );
 }
 
-// --- Exported Page Component with Suspense Boundary (remains the same) ---
+// --- Exported Page Component with Suspense Boundary  ---
 export default function SearchPage() {
  return (
     <Suspense fallback={<div className="text-center text-gray-500 mt-6">Loading search...</div>}>

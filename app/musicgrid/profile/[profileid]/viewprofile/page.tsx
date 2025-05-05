@@ -1,14 +1,13 @@
 // written by: Paul
   // tested by: Paul, Jordan, Others...
-
 import { db } from '@/src/db';
 import { users } from '@/src/db/schema';
 import { eq } from 'drizzle-orm';
 import Image from 'next/image';
 import { auth } from '@/auth';
 import { getLikedSongsForUserAction } from '@/lib/actions';
-import SongCard from '@/app/ui/song-card'; // Ensure this path is correct
-import { notFound } from 'next/navigation'; // Import notFound
+import SongCard from '@/app/ui/song-card';
+import { notFound } from 'next/navigation';
 
 
 const nameToColorCache: Record<string, string> = {};
@@ -56,7 +55,7 @@ const AvatarPlaceholder: React.FC<AvatarPlaceholderProps> = ({
 };
 
 interface PageProps {
-  params: Promise<{ // Type params as a Promise again
+  params: Promise<{
     profileid: string;
   }>;
 }
@@ -90,7 +89,6 @@ export default async function ProfilePage({ params }: PageProps) {
   const likedSongsResult = await getLikedSongsForUserAction(profileUserId, viewingUserId);
 
   if (likedSongsResult.error) {
-    // Log the error for debugging, but maybe don't crash the page
     console.error('Error fetching liked songs:', likedSongsResult.error);
   }
 

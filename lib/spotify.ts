@@ -11,8 +11,6 @@ interface SpotifyClientCredentialsTokenResponse {
 }
 
 // --- In-Memory Cache for Application Token ---
-// NOTE: In serverless environments, each instance might get its own token.
-// Consider a more persistent cache (e.g., Redis, database) for better scalability.
 let appAccessToken: string | null = null;
 let appTokenExpiry: number | null = null; // Store expiry time (Unix timestamp in seconds)
 

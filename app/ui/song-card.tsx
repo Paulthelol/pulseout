@@ -5,7 +5,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { MessageCircle, Music2 } from 'lucide-react';
-import LikeButton from './like-button'; // Import the existing LikeButton
+import LikeButton from './like-button';
 
 // Define the expected props based on the data from getTrendingSongsAction
 type SongWithCountsAndLikeInfo = {
@@ -14,7 +14,7 @@ type SongWithCountsAndLikeInfo = {
   artist: string | null;
   album: string | null;
   coverUrl: string | null;
-  spotifyUrl: string | null; // Keep if you want a direct Spotify link
+  spotifyUrl: string | null;
   addedAt: Date | null;
   likeCount: number;
   commentCount: number;
@@ -38,7 +38,6 @@ export default function SongCard({ song }: SongCardProps) {
               alt={`Album art for ${song.album || song.name}`}
               fill
               sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, (max-width: 1280px) 22vw, 18vw"
-              // Changed: group-hover:scale-110
               className="object-cover group-hover:scale-110 transition-transform duration-300 ease-in-out"
             />
           ) : (
@@ -58,7 +57,7 @@ export default function SongCard({ song }: SongCardProps) {
         </div>
       </Link>
 
-      {/* Actions (Like Button and Comment Count) - Placed below the link */}
+      {/* Actions (Like Button and Comment Count) */}
       <div className="flex justify-between items-center mt-3 pt-2 border-t border-border/50">
         {/* Like Button */}
         <LikeButton

@@ -118,8 +118,6 @@ export async function saveSongAction(songData: SongData): Promise<{ success: boo
       .onConflictDoNothing({ target: songs.id });
 
     console.log(`Song saved or already exists: ${songData.id}`);
-    // Optional: Revalidate paths if needed
-    // revalidatePath('/musicgrid/library');
 
     return { success: true, songId: songData.id };
 
@@ -301,14 +299,13 @@ export async function getLikedSongsAction(
   }
 
   try {
-    // --- Use the same subquery pattern as getTrendingSongsAction ---
     const userLikeSubquery = db.$with('user_like').as(
       db.select({
         songId: song_likes.songId,
         liked: sql<boolean>`true`.as('liked')
       })
         .from(song_likes)
-        .where(eq(song_likes.userId, userId)) // Already filtering by user below, but keep for clarity
+        .where(eq(song_likes.userId, userId))
     );
 
     const commentCountSubquery = db.$with('comment_count').as(
@@ -363,7 +360,6 @@ export async function getLikedSongsAction(
       .limit(limit)
       .offset(offset);
 
-    // No need for final map as userHasLiked is handled in select for this specific query
     return { data: likedSongsData };
 
   } catch (error) {
@@ -435,7 +431,7 @@ export async function getTrendingSongsAction(
         spotifyUrl: songs.spotifyUrl,
         addedAt: songs.addedAt,
         trending_score: songs.trending_score,
-        last_decayed_at: songs.last_decayed_at, // *** Added missing field ***
+        last_decayed_at: songs.last_decayed_at,
         // Add calculated fields
         likeCount: sql<number>`coalesce(${likeCountSubquery.count}, 0)`.as('like_count'),
         commentCount: sql<number>`coalesce(${commentCountSubquery.count}, 0)`.as('comment_count'),
@@ -568,7 +564,6 @@ export async function fetchComments(
     }
 
     // 3. Fetch All Comments in the Threads using Raw SQL Recursive CTE
-    // *** FIXED: Use Drizzle table objects within the raw SQL CTE ***
     const recursiveQuery = sql`
           WITH RECURSIVE comment_thread AS (
               -- Anchor Member: Select the specific top-level comments for this page
@@ -851,8 +846,6 @@ export async function toggleCommentLike(
 
 const DeleteSchema = z.object({
   commentId: z.string().uuid({ message: "Invalid comment ID format." }),
-  // Optional: songId can be passed for more specific revalidation, but fetching it is safer
-  // songId: z.string().optional(),
 });
 
 /**
@@ -1039,15 +1032,12 @@ export async function getLikedSongsForUserAction(
       .orderBy(desc(song_likes.likedAt));
 
     // 4. Final Mapping (Adjust userHasLiked based on viewing user)
-    // The SQL query handles the ordering, so no JS re-sorting is needed.
     const finalData = likedSongsData.map(song => ({
       // Spread all selected fields
       ...song,
       // Ensure userHasLiked is false if no viewing user is logged in.
       // The SQL coalesce handles the case where the viewing user exists but didn't like the song.
       userHasLiked: viewingUserId ? song.userHasLiked : false,
-      // We don't strictly need likedAt in the final SongWithCountsAndLikeInfo type
-      // unless SongCard uses it, so it's implicitly dropped here unless added to the type.
     }));
 
     // Type assertion to match the expected return type

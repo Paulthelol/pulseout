@@ -1,16 +1,14 @@
 // written by: Paul and Jordan
   // tested by: Paul, Andrew, Jordan, Others...
-  import { auth } from '@/auth'; // Import NextAuth setup
-import { getSongWithLikeInfoAction } from '@/lib/actions'; // Import server action to fetch song data
-import { notFound } from 'next/navigation'; // Next.js function for 404 pages
-import Image from 'next/image'; // Next.js Image component
-import Link from 'next/link'; // Next.js Link component
-import { ExternalLink } from 'lucide-react'; // Icon component
-import LikeButton from '@/app/ui/like-button'; // Your LikeButton component (ensure path is correct)
-import CommentSection from '@/app/ui/comment-section'; // Import the CommentSection component (ensure path is correct)
+  import { auth } from '@/auth';
+import { getSongWithLikeInfoAction } from '@/lib/actions';
+import { notFound } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
+import { ExternalLink } from 'lucide-react';
+import LikeButton from '@/app/ui/like-button';
+import CommentSection from '@/app/ui/comment-section';
 
-// Define the User type (ensure this matches the type used in CommentSection/actions)
-// Consider moving this to a shared types file (e.g., types/index.ts)
 type User = {
   id: string;
   name: string | null;
@@ -31,9 +29,7 @@ export default async function SongViewPage({ params }: PageProps) {
     const songid = resolvedParams.songid;
 
     // Fetch song data using the server action
-    // Using a separate async function for fetching can be good practice
     async function fetchData(id: string) {
-      // Consider adding try/catch here for more granular error handling if needed
       return await getSongWithLikeInfoAction(id);
     }
     const { data: song, error: fetchError } = await fetchData(songid);
@@ -47,21 +43,17 @@ export default async function SongViewPage({ params }: PageProps) {
     // Fetch session data on the server
     const session = await auth();
 
-    // Prepare the currentUser object for the CommentSection component
-    // Adapt this based on your actual session.user structure from NextAuth
     const currentUser: User | null = session?.user && session.user.id
         ? {
-              id: session.user.id, // Ensure id is defined
-              name: session.user.name ?? null, // Use nullish coalescing for name
-              image: session.user.image ?? null, // Use nullish coalescing for image
+              id: session.user.id,
+              name: session.user.name ?? null, 
+              image: session.user.image ?? null,
           }
         : null; // Pass null if the user is not logged in
 
     // Render the page content
     return (
-        // Using p-0 assuming padding is handled by the container or layout
         <div className="p-0">
-            {/* Main layout using Flexbox, responsive direction */}
             <div className="flex flex-col lg:flex-row gap-6 md:gap-10">
 
                 {/* --- LEFT SIDE - Song Details & Actions --- */}
@@ -96,7 +88,7 @@ export default async function SongViewPage({ params }: PageProps) {
                             <Link
                                 href={song.spotifyUrl}
                                 target="_blank" // Open in new tab
-                                rel="noopener noreferrer" // Security best practice
+                                rel="noopener noreferrer"
                                 className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors text-xs font-medium w-full max-w-xs"
                             >
                                 <ExternalLink size={14} />
@@ -106,14 +98,14 @@ export default async function SongViewPage({ params }: PageProps) {
 
                         {/* Like Button Component */}
                         <LikeButton
-                            songId={song.id} // Pass the fetched song ID
-                            initialLiked={song.userHasLiked} // Pass initial like status
-                            initialLikeCount={song.likeCount} // Pass initial like count
+                            songId={song.id}
+                            initialLiked={song.userHasLiked}
+                            initialLikeCount={song.likeCount}
                         />
                     
                     </div>
 
-                    {/* Artist Info Card (Placeholder) 
+                    {/* Artist Info Card (Placeholder) (Ended up not using this component)
                     <div className="bg-card border border-border rounded-lg shadow p-4">
                         <h2 className="text-lg font-semibold mb-2">About the Artist</h2>
                         <p className="text-sm text-muted-foreground">
@@ -124,14 +116,7 @@ export default async function SongViewPage({ params }: PageProps) {
                 </div>
 
                 {/* --- RIGHT SIDE - Comments Section --- */}
-                {/* Use flex-1 to allow this section to grow */}
-                {/* min-w-0 prevents content overflow issues in flex layouts */}
                 <div className="flex-1 bg-card border border-border rounded-lg shadow-md p-4 sm:p-6 min-w-0">
-                    {/*
-                       Render the CommentSection component here.
-                       It's a Client Component ('use client') and handles its own data fetching and state.
-                       Pass the songId and the prepared currentUser object.
-                    */}
                     <CommentSection songId={song.id} currentUser={currentUser} />
                 </div>
 

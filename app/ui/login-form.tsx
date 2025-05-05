@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { authenticateSpotify, authenticateGoogle } from '@/lib/actions';
 import { useSearchParams } from 'next/navigation';
 import { useActionState } from 'react';
-import { Loader2 } from 'lucide-react'; // Import Loader icon
+import { Loader2 } from 'lucide-react';
 
 export default function LoginForm() {
   const searchParams = useSearchParams();
@@ -14,12 +14,11 @@ export default function LoginForm() {
 
   // Action state for Spotify
   const [spotifyErrorMessage, spotifyAction, isSpotifyPending] = useActionState(
-    authenticateSpotify, // Pass the original action
-    undefined // Initial state for error message
+    authenticateSpotify,
+    undefined
   );
 
   // Action state for Google
-  // Initial state is undefined (or null), error message might not be used much here
   const [googleErrorMessage, googleAction, isGooglePending] = useActionState(
     authenticateGoogle, // Pass the original action
     undefined // Initial state for error message
@@ -63,7 +62,6 @@ export default function LoginForm() {
       </form>
 
       {/* Spotify Login Form */}
-      {/* Use the original action here, useActionState handles the rest */}
       <form action={spotifyAction} className="space-y-3">
         <button
           className="w-full flex items-center justify-center gap-3 text-xl rounded-lg bg-black px-6 py-4 text-white font-semibold hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1DB954] active:bg-zinc-900 transition-all duration-200 disabled:opacity-50"

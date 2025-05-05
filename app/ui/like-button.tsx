@@ -3,8 +3,8 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { Heart } from 'lucide-react'; // Using lucide-react icon
-import { toggleLikeSongAction } from '@/lib/actions'; // Import the action
+import { Heart } from 'lucide-react';
+import { toggleLikeSongAction } from '@/lib/actions';
 
 interface LikeButtonProps {
   songId: string;

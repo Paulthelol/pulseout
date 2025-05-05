@@ -3,9 +3,9 @@
   'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getLikedSongsAction } from '@/lib/actions'; // Import the action
-import SongCard from '@/app/ui/song-card'; // *** Import SongCard ***
-import { Loader2, Heart, HeartOff, ListEnd } from 'lucide-react'; // Icons
+import { getLikedSongsAction } from '@/lib/actions'; 
+import SongCard from '@/app/ui/song-card';
+import { Loader2, Heart, HeartOff, ListEnd } from 'lucide-react';
 
 // --- Use the richer type definition ---
 type SongWithCountsAndLikeInfo = {
@@ -19,7 +19,6 @@ type SongWithCountsAndLikeInfo = {
   likeCount: number;
   commentCount: number;
   userHasLiked: boolean;
-  // likedAt might also be present from the query if needed
 };
 
 
@@ -68,7 +67,6 @@ export default function LikedSongsPage() {
       if (isInitial) setIsInitialLoading(false);
       setIsLoading(false);
     }
-  // Removed offset from deps as loadSongs call provides it, preventing potential infinite loop if state updates trigger effect too quickly
   }, [isLoading, hasMore]);
 
   // Initial load effect (no change)
@@ -97,7 +95,6 @@ export default function LikedSongsPage() {
       if (currentLoadMoreRef) observer.unobserve(currentLoadMoreRef);
       if (observerRef.current) observerRef.current.disconnect();
     };
-  // Add offset back to dependencies as loadSongs relies on it for subsequent fetches
   }, [isInitialLoading, isLoading, hasMore, loadSongs, offset]);
 
 
@@ -137,7 +134,7 @@ export default function LikedSongsPage() {
         ))}
       </ul>
 
-      {/* Subsequent loading indicator */}
+      {/* loading indicator */}
       {isLoading && (
         <div className="flex justify-center items-center mt-6 p-4 text-muted-foreground">
           <Loader2 className="mr-2 h-5 w-5 animate-spin" />
