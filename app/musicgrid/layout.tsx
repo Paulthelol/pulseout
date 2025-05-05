@@ -1,4 +1,6 @@
-import React from 'react';
+// written by: Paul and Jordan
+  // tested by: Paul, Andrew, Jordan, Others...
+  import React from 'react';
 import SideBar from '../ui/side-bar'; // Ensure this path is correct
 import SearchBar from '@/app/ui/search-bar'; // Ensure this path is correct
 import { Suspense } from 'react';

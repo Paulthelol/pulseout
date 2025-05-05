@@ -1,4 +1,6 @@
-'use client';
+// written by: Paul
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getLikedSongsAction } from '@/lib/actions'; // Import the action

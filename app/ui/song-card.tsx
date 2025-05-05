@@ -1,4 +1,6 @@
-'use client';
+// written by: Paul and Jordan
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';

@@ -1,4 +1,6 @@
-import { auth } from '@/auth'; // Import NextAuth setup
+// written by: Paul and Jordan
+  // tested by: Paul, Andrew, Jordan, Others...
+  import { auth } from '@/auth'; // Import NextAuth setup
 import { getSongWithLikeInfoAction } from '@/lib/actions'; // Import server action to fetch song data
 import { notFound } from 'next/navigation'; // Next.js function for 404 pages
 import Image from 'next/image'; // Next.js Image component

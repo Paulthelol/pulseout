@@ -1,4 +1,6 @@
-// app/layout.tsx
+// written by: Paul and Jordan
+  // tested by: Paul, Andrew, Jordan, Others...
+
 import type { Metadata } from 'next';
 import { SessionProvider } from 'next-auth/react'; // Import SessionProvider
 import { auth } from '@/auth'; // Import auth function (adjust path if needed)

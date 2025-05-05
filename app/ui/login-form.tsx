@@ -1,4 +1,6 @@
-'use client';
+// written by: Paul
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client';
 
 import Image from 'next/image';
 import { authenticateSpotify, authenticateGoogle } from '@/lib/actions';

@@ -1,4 +1,6 @@
-'use client';
+// written by: Paul
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client';
 
 import Image from 'next/image';
 import { Music2 } from 'lucide-react';

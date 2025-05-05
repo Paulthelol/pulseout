@@ -1,3 +1,4 @@
+//Created from template and modified by Paul
 import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
 

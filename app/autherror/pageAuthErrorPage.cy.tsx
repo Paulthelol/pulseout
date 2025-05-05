@@ -1,3 +1,5 @@
+  // written by: Andrew
+  // tested by: Paul
 import React from 'react'
 import AuthErrorPage from './page'
 

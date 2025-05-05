@@ -1,13 +1,13 @@
-// import { db } from "@/src/db"; // No longer needed for app token
-// import { accounts } from "@/src/db/schema"; // No longer needed for app token
-// import { eq } from "drizzle-orm"; // No longer needed for app token
+// written by: Paul
+  // tested by: Paul, Andrew, Jordan, Others...
+
 import { unstable_noStore as noStore } from 'next/cache';
 
 // --- Interfaces ---
 interface SpotifyClientCredentialsTokenResponse {
     access_token: string;
-    token_type: string; // Typically "Bearer"
-    expires_in: number; // Lifespan in seconds
+    token_type: string;
+    expires_in: number;
 }
 
 // --- In-Memory Cache for Application Token ---
@@ -16,7 +16,7 @@ interface SpotifyClientCredentialsTokenResponse {
 let appAccessToken: string | null = null;
 let appTokenExpiry: number | null = null; // Store expiry time (Unix timestamp in seconds)
 
-// --- NEW: Function to get Application Access Token (Client Credentials) ---
+// --- Function to get Application Access Token (Client Credentials) ---
 async function getSpotifyAppAccessToken(): Promise<string | null> {
     noStore(); // Ensure this function re-evaluates cache status
 
@@ -38,7 +38,6 @@ async function getSpotifyAppAccessToken(): Promise<string | null> {
     }
 
     try {
-        // *** CORRECTED SPOTIFY TOKEN URL ***
         const response = await fetch("https://accounts.spotify.com/api/token", {
             method: "POST",
             headers: {
@@ -78,8 +77,8 @@ async function getSpotifyAppAccessToken(): Promise<string | null> {
 }
 
 
-// --- Spotify API Search Function (MODIFIED) ---
-// Now uses the application access token
+// --- Spotify API Search Function ---
+// Uses the application access token
 export async function searchSpotifyTracks(query: string): Promise<any> {
     noStore();
 
@@ -136,7 +135,7 @@ export async function searchSpotifyTracks(query: string): Promise<any> {
 }
 
 
-// --- User-Specific Token Functions (Commented Out - Keep if needed elsewhere) ---
+// --- User-Specific Token Functions (Keep if needed elsewhere) ---
 
 /*
 interface SpotifyUserTokenResponse {

@@ -1,3 +1,4 @@
+//Created using template and modified by Paul
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 

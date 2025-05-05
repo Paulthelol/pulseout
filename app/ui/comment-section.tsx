@@ -1,4 +1,6 @@
-'use client'; // This component uses hooks, so it must be a Client Component
+// written by: Paul
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client'; // This component uses hooks, so it must be a Client Component
 
 import React, { useState, useEffect, useOptimistic, useRef, useTransition, useCallback } from 'react';
 import { Heart, MessageSquare, ChevronDown, Loader2, Trash2 } from 'lucide-react';

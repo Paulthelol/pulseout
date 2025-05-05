@@ -1,3 +1,4 @@
+//Created from template
 import { cn } from "@/lib/utils"
 
 function Skeleton({

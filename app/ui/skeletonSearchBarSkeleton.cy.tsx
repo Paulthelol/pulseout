@@ -1,4 +1,6 @@
-import React from 'react'
+// written by: Andrew
+  // tested by: Paul
+  import React from 'react'
 import { SearchBarSkeleton } from './skeleton'
 
 describe('<SearchBarSkeleton />', () => {

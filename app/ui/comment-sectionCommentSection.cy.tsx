@@ -1,4 +1,6 @@
-import React from 'react'
+// written by: Andrew
+  // tested by: Paul
+  import React from 'react'
 import CommentSection from './comment-section'
 
 describe('<CommentSection />', () => {

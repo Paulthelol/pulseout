@@ -1,4 +1,5 @@
-// lib/actions.ts
+// written by: Paul
+  // tested by: Paul, Andrew, Jordan, Others...
 'use server';
 
 import { signIn, signOut, auth } from '@/auth';

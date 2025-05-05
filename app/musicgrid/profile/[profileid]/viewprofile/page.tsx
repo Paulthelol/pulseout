@@ -1,4 +1,5 @@
-// app/musicgrid/profile/[profileid]/page.tsx
+// written by: Paul
+  // tested by: Paul, Jordan, Others...
 
 import { db } from '@/src/db';
 import { users } from '@/src/db/schema';
