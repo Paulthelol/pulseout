@@ -1,9 +1,9 @@
 import React from 'react'
-import WelcomePage from './page'
+import { Skeleton } from './skeleton'
 
-describe('<WelcomePage />', () => {
+describe('<Skeleton />', () => {
   it('renders', () => {
     // see: https://on.cypress.io/mounting-react
-    cy.mount(<WelcomePage />)
+    cy.mount(<Skeleton />)
   })
 })

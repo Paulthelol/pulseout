@@ -1,9 +1,9 @@
 import React from 'react'
-import WelcomePage from './page'
+import SongCard from './song-card'
 
-describe('<WelcomePage />', () => {
+describe('<SongCard />', () => {
   it('renders', () => {
     // see: https://on.cypress.io/mounting-react
-    cy.mount(<WelcomePage />)
+    cy.mount(<SongCard />)
   })
 })
