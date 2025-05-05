@@ -1,4 +1,6 @@
-'use client'; // This component uses hooks, so it must be a Client Component
+// written by: Paul
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client';
 
 import React, { useState, useEffect, useOptimistic, useRef, useTransition, useCallback } from 'react';
 import { Heart, MessageSquare, ChevronDown, Loader2, Trash2 } from 'lucide-react';
@@ -6,7 +8,6 @@ import { fetchComments, addComment, toggleCommentLike, deleteComment } from '@/l
 import type { CommentWithDetails as BaseCommentWithDetails } from '@/lib/actions';
 import Link from 'next/link';
 
-// --- Types ---
 type User = {
   id: string;
   name: string | null;
@@ -14,10 +15,9 @@ type User = {
 };
 
 // Extend the base type locally to include the optimistic flag
-// *** This interface now includes the optional optimistic fields ***
 interface CommentWithDetails extends BaseCommentWithDetails {
   isOptimistic?: boolean;
-  optimisticId?: string; // Keep track of the original optimistic ID for replacement
+  optimisticId?: string;
 }
 
 
@@ -25,8 +25,6 @@ interface CommentWithDetails extends BaseCommentWithDetails {
 const COMMENTS_PER_PAGE = 10;
 const REFRESH_DELAY = 500; // Delay for refreshing list after top-level add/delete
 
-// --- Helper Functions (Keep As Is) ---
-// ... (getRandomBgColor, formatTimestamp) ...
 const nameToColorCache: Record<string, string> = {};
 const tailwindColors = [
   'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500',
@@ -68,7 +66,7 @@ const formatTimestamp = (date: Date): string => {
   }
 };
 
-// --- Avatar Placeholder Component (Keep As Is) ---
+// --- Avatar Placeholder Component ---
 interface AvatarPlaceholderProps { username: string | null | undefined; }
 const AvatarPlaceholder: React.FC<AvatarPlaceholderProps> = ({ username }) => {
   const nameStr = username || 'Anonymous';
@@ -81,8 +79,6 @@ const AvatarPlaceholder: React.FC<AvatarPlaceholderProps> = ({ username }) => {
   );
 };
 
-// --- Like Button Component (Keep As Is - with minor ID check improvement) ---
-// ... (LikeButton component remains the same) ...
 interface LikeButtonProps {
   commentId: string;
   initialLikes: number;
@@ -98,8 +94,6 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
   const [likes, setLikes] = useState(initialLikes);
   const [liked, setLiked] = useState(initialLiked);
   const [isPending, startTransition] = useTransition();
-  // Determine if the ID is likely temporary (optimistic)
-  // Use a simpler check: does it look like a UUID?
   const isOptimisticId = !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(commentId);
 
   useEffect(() => {
@@ -169,15 +163,14 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
   );
 };
 
-// --- Comment Input Component (Keep As Is) ---
-// ... (CommentInput component remains the same) ...
+
 interface CommentInputProps {
   songId: string;
   parentId?: string | null;
   onSubmitSuccess?: () => void; // For top-level refresh trigger
   onOptimisticReplyAdded?: (optimisticReply: CommentWithDetails) => void; // For optimistic replies
-  onServerConfirm?: (optimisticId: string, confirmedComment: CommentWithDetails) => void; // Still needed for replies
-  onServerError?: (optimisticId: string) => void; // Still needed for replies
+  onServerConfirm?: (optimisticId: string, confirmedComment: CommentWithDetails) => void;
+  onServerError?: (optimisticId: string) => void;
   onCancel?: () => void;
   currentUser: User | null;
   placeholder?: string;
@@ -210,7 +203,6 @@ const CommentInput: React.FC<CommentInputProps> = ({
     const content = formData.get('content') as string;
     if (!content?.trim()) { setError("Comment cannot be empty."); textAreaRef.current?.focus(); return; }
 
-    // *** Explicitly type the optimistic comment object ***
     const optimisticId = crypto.randomUUID();
     const optimisticComment: CommentWithDetails = {
       id: optimisticId, // Temporary ID
@@ -326,8 +318,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
   );
 };
 
-// --- Sort Dropdown Component (Keep As Is) ---
-// ... (SortDropdown component remains the same) ...
+// --- Sort Dropdown Component ---
 interface SortDropdownProps { currentSort: 'top' | 'recent'; onSortChange: (newSort: 'top' | 'recent') => void; }
 const SortDropdown: React.FC<SortDropdownProps> = ({ currentSort, onSortChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -382,7 +373,6 @@ const SortDropdown: React.FC<SortDropdownProps> = ({ currentSort, onSortChange }
 
 // --- Comment Component ---
 interface CommentProps {
-  // *** Use the extended type for the comment prop ***
   comment: CommentWithDetails;
   songId: string;
   currentUser: User | null;
@@ -403,7 +393,6 @@ const Comment: React.FC<CommentProps> = ({
   refreshTopLevelList
 }) => {
   const [showReplyInput, setShowReplyInput] = useState(false);
-  // *** Use the extended type for the state ***
   const [visibleReplies, setVisibleReplies] = useState<CommentWithDetails[]>(comment.replies || []);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -416,7 +405,6 @@ const Comment: React.FC<CommentProps> = ({
   }, [comment.replies, comment.isOptimistic]);
 
   const isCommentOwner = currentUser?.id === comment.user.id;
-  // *** Access the property safely ***
   const isOptimisticComment = comment.isOptimistic === true;
 
   // Handler for adding optimistic reply LOCALLY
@@ -438,7 +426,6 @@ const Comment: React.FC<CommentProps> = ({
 
   // Handler for removing optimistic reply LOCALLY on server error
   const handleReplyServerError = (optimisticId: string) => {
-    // *** Access optimisticId safely ***
     setVisibleReplies(prevReplies => prevReplies.filter(reply => reply.optimisticId !== optimisticId));
     onReplyError(optimisticId); // Bubble up
   };
@@ -570,7 +557,7 @@ const Comment: React.FC<CommentProps> = ({
 };
 
 
-// --- Main Comment Section Component (MODIFIED) ---
+// --- Main Comment Section Component ---
 interface CommentSectionProps {
   songId: string;
   currentUser: User | null;
@@ -611,7 +598,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
 
   // Memoized function to load comments
   const loadComments = useCallback(async (loadMore = false) => {
-    // ... (loadComments implementation remains the same) ...
     const currentLoadingMore = isLoadingMoreRef.current;
     const currentHasMore = hasMoreRef.current;
     const currentOffset = loadMore ? offsetRef.current : 0;
@@ -712,7 +698,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
   // --- Callback for successful TOP-LEVEL comment submission ---
   const handleTopLevelCommentSubmitSuccess = useCallback(() => {
     console.log("Top-level comment submitted successfully. Refreshing list.");
-    // No optimistic update needed, just refresh after delay
     setTimeout(refreshCommentList, REFRESH_DELAY);
   }, [refreshCommentList]);
 
@@ -798,12 +783,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
         setOptimisticComments({ action: 'delete', comment: { id: deletedCommentId } });
       }
     });
-    // Optionally trigger a delayed refresh after delete
-    // setTimeout(refreshCommentList, REFRESH_DELAY);
   }, [setOptimisticComments]);
 
 
-  // --- Render JSX ---
   return (
     <div className="w-full max-w-3xl mx-auto py-6 px-4 sm:px-0 font-sans">
       {/* Header */}
@@ -849,7 +831,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ songId, currentUser }) 
           <p className="text-gray-500 text-center py-6 italic">No comments yet. Be the first!</p>
         )}
         {/* Render Comments using the optimistic state (for top-level deletes) */}
-        {/* *** Ensure comment uses the extended type *** */}
         {optimisticComments.map((comment: CommentWithDetails) => (
           <div key={comment.optimisticId || comment.id} className="py-2 border-b border-gray-100 last:border-b-0">
             <Comment

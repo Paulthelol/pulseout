@@ -1,4 +1,6 @@
-import React from 'react'
+// written by: Andrew
+  // tested by: Paul
+  import React from 'react'
 import SideBar from './side-bar'
 
 describe('<SideBar />', () => {

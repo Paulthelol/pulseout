@@ -1,3 +1,5 @@
+//Created using template and modified by Andrew
+// tested by: Paul
 import { defineConfig } from "cypress";
 
 export default defineConfig({

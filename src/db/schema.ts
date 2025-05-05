@@ -1,3 +1,6 @@
+// written by: Paul
+// Auth schema template from auth.js
+  // tested by: Paul, Andrew, Jordan, Others...
 import {
   boolean,
   timestamp,
@@ -7,24 +10,15 @@ import {
   uuid,
   integer,
   varchar,
-  index, // Import index
-  serial, // Import serial for auto-incrementing IDs if preferred for comments
+  index,
+  serial,
   uniqueIndex,
   doublePrecision
-  // Import uniqueIndex for ensuring one like per user/song
-  // import { jsonb } from "drizzle-orm/pg-core"; // Keep if needed elsewhere
 } from "drizzle-orm/pg-core"
-import postgres from "postgres"
-import { drizzle } from "drizzle-orm/postgres-js"
 import type { AdapterAccountType } from "next-auth/adapters"
 import {relations} from "drizzle-orm"
 
 
-
-//const connectionString = "postgres://postgres:postgres@localhost:5432/drizzle"
-// const pool = postgres(process.env.POSTGRES_URL!, { max: 1 })
-
-// export const db = drizzle(pool)
 
 export const users = pgTable("user", {
   id: text("id")
@@ -116,11 +110,7 @@ export const songs = pgTable("song", {
     spotifyUrl: text("spotifyUrl"),
     addedAt: timestamp("addedAt").defaultNow(),
     trending_score: doublePrecision("trending_score").default(0.0).notNull(), // Score that decays
-    last_decayed_at: timestamp("last_decayed_at", { mode: "date" }), // Optional: Track last decay time
-    // Note: likeCount and commentCount are omitted here for simplicity.
-    // You would typically calculate these with queries when needed.
-    // likeCount: integer("likeCount").default(0).notNull(),
-    // commentCount: integer("commentCount").default(0).notNull(),
+    last_decayed_at: timestamp("last_decayed_at", { mode: "date" }), // Track last decay time
   }, (song) => ({
      nameIdx: index("song_name_idx").on(song.name),
      artistIdx: index("song_artist_idx").on(song.artist),
@@ -149,7 +139,7 @@ export const song_likes = pgTable("song_like", {
   })
 );
 
-    // --- NEW: Comments Table ---
+    // --- Comments Table ---
     export const comments = pgTable('comment', {
       // Use defaultRandom() to generate UUIDs automatically on insertion
       id: uuid('id').defaultRandom().primaryKey(),
@@ -162,9 +152,6 @@ export const song_likes = pgTable("song_like", {
       parentId: uuid('parent_id').references((): any => comments.id, { onDelete: 'cascade' }), // Cascade delete replies if parent comment is deleted
       // Timestamp automatically set to the time of creation
       createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
-      // Optional: Denormalized like count for quicker reads.
-      // You would need to update this via triggers or within your like/unlike actions.
-      // likesCount: integer('likes_count').default(0).notNull(),
   }, (table) => {
       // Indexes to speed up common queries
       return {
@@ -187,7 +174,6 @@ export const song_likes = pgTable("song_like", {
       // Define a composite primary key to ensure a user can only like a specific comment once.
       return {
           pk: primaryKey({ columns: [table.userId, table.commentId] }),
-          // Optional index for querying likes by commentId if needed frequently
           commentIdIdx: index('comment_like_comment_id_idx').on(table.commentId),
       };
   });

@@ -1,11 +1,13 @@
-'use client';
+// written by: Paul and Jordan
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSession } from 'next-auth/react'; // Import useSession
+import { useSession } from 'next-auth/react';
 import { SignOut } from '@/lib/actions';
-import { User, LogOut, TrendingUp, Heart, Loader2, MicVocal } from 'lucide-react'; // Added Loader2 for loading state
+import { User, LogOut, TrendingUp, Heart, Loader2, MicVocal } from 'lucide-react';
 
 export default function SideBar() {
   // Get session data and status
@@ -55,7 +57,6 @@ export default function SideBar() {
       <div className="flex flex-row items-center gap-4 md:flex-col md:items-start md:gap-3">
         {/* My Profile Link - Conditionally render based on session status */}
         {status === 'loading' && (
-           // Optional: Show a loading indicator while session is being fetched
            <div className="flex items-center gap-2 text-[13px] text-gray-400">
              <Loader2 size={16} className="animate-spin md:hidden" />
              <span className="hidden md:inline">Loading...</span>
@@ -70,7 +71,6 @@ export default function SideBar() {
              <span className="hidden md:inline">My Profile</span>
           </Link>
         )}
-        {/* You might want to show a "Sign In" link if status === 'unauthenticated' */}
 
         {/* Sign Out Button - Only show if authenticated */}
         {status === 'authenticated' && (

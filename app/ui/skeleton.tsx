@@ -1,17 +1,13 @@
-// app/ui/skeletons.tsx
-import { Skeleton } from "@/components/ui/skeleton"; // Assuming shadcn/ui is installed
+// written by: Paul
+  // tested by: Paul
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Skeleton loader for the Search Bar component
 export function SearchBarSkeleton() {
   return (
     <div className="relative flex flex-1 flex-shrink-0">
-      {/* Mimic the input field dimensions and styling */}
-      {/* Calculate height: py-[9px] * 2 + typical line height (e.g., 20px) = ~38px */}
       <Skeleton className="h-[38px] w-full rounded-md" />
-      {/* Mimic the icon position */}
       <div className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2">
-        {/* Optional: Skeleton circle for icon */}
-        {/* <Skeleton className="h-full w-full rounded-full" /> */}
       </div>
     </div>
   );

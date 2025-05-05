@@ -1,4 +1,6 @@
-'use client';
+// written by: Paul and Jordan
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client';
 
 import LoginForm from "../ui/login-form";
 import { Suspense } from "react";
