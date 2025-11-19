@@ -80,10 +80,3 @@
 26. Visit the website in your browser:
     * Go to: [http://localhost:3000](http://localhost:3000) (or `https://localhost.pulseout.dev:3000` if using the custom host setup).
 27. You can now log in and use the website!
-
----
-
-## Usage Features
-* **View Details:** To view a new song, search for the song title or artist and click **View Details**.
-* **Spotify Redirect:** In the current configuration, clicking on a song's title directly will redirect you to the Spotify page.
-* **Note:** Commenting functionality is not currently implemented in this deliverable.
