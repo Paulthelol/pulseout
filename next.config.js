@@ -20,10 +20,7 @@ const nextConfig = {
         pathname: '/a/**', // Allow any path under /image/
       },
     ],
-  },
-  experimental: {
-    nodeMiddleware: true,
-  },
+  }
 }
 
 module.exports = nextConfig;
