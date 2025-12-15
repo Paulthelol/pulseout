@@ -1,9 +1,11 @@
-'use client';
+// written by: Paul
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getTrendingSongsAction } from '@/lib/actions'; // Import the action
-import SongCard from '@/app/ui/song-card'; // Corrected path based on previous context
-import { Loader2, TrendingUp, ListEnd } from 'lucide-react'; // Icons
+import { getTrendingSongsAction } from '@/lib/actions';
+import SongCard from '@/app/ui/song-card';
+import { Loader2, TrendingUp, ListEnd } from 'lucide-react';
 
 // Define the Song type based on the action's return data
 // Ensure this matches the type used in the action and SongCard
@@ -63,7 +65,6 @@ export default function TrendingPage() {
       } else if (result.data) {
         // Use functional state update for safety
         setSongs(prevSongs => {
-          // **FIX: Duplicate Check**
           const existingSongIds = new Set(prevSongs.map(s => s.id));
           const newUniqueSongs = result.data!.filter(newSong => !existingSongIds.has(newSong.id));
 
@@ -71,11 +72,9 @@ export default function TrendingPage() {
             console.warn("Pagination fetch included songs already present in the state. Filtering duplicates.");
           }
 
-          // If it's the initial load, replace the state; otherwise, append unique new songs
           return fetchOffset === 0 ? newUniqueSongs : [...prevSongs, ...newUniqueSongs];
         });
 
-        // Update the offset for the *next* potential fetch
         offsetRef.current = fetchOffset + result.data.length;
 
         // Determine if there are more songs based on whether a full page was received
@@ -83,7 +82,6 @@ export default function TrendingPage() {
         setHasMore(moreAvailable);
 
       } else {
-         // No data and no error probably means end of results
          setHasMore(false);
       }
     } catch (err) {

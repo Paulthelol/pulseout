@@ -1,4 +1,6 @@
-import { Anek_Latin, Noto_Sans } from "next/font/google";
+// written by: Paul
+// // tested by: Paul
+  import { Anek_Latin, Noto_Sans } from "next/font/google";
 
 export const noto_sans = Noto_Sans({
     subsets: ['latin'],

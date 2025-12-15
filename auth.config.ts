@@ -1,3 +1,6 @@
+// Created using template and modified by Paul
+  // tested by: Paul, Andrew, Jordan, Others...
+
 import type { NextAuthConfig } from "next-auth";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import Spotify from "next-auth/providers/spotify";

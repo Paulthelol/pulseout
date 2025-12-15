@@ -1,9 +1,10 @@
-'use client';
+// written by: Paul
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client';
 
 import Image from 'next/image';
 import { Music2 } from 'lucide-react';
 
-// Define the expected track data structure (same as in search page)
 interface SpotifyTrack {
   id: string;
   name: string;
@@ -12,7 +13,7 @@ interface SpotifyTrack {
     name: string;
     images: { url: string }[];
   };
-  external_urls: { // Keep for potential future use or tooltips, though not directly linked
+  external_urls: {
     spotify: string;
   };
 }

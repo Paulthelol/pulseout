@@ -1,9 +1,28 @@
+//Created using template and modified by Andrew
+// tested by: Paul
 import { defineConfig } from "cypress";
 
 export default defineConfig({
-  e2e: {
-    setupNodeEvents(on, config) {
-      // implement node event listeners here
+  projectId: 'ge415s',
+  component: {
+    devServer: {
+      framework: "next",    // Using Next.js as the framework
+      bundler: "webpack",   // Using Webpack as the bundler
+      webpackConfig: {
+        resolve: {
+          fallback: Object.assign(
+            {},
+            ...[
+              'assert', 'buffer', 'child_process', 'cluster', 'crypto', 'dgram', 
+              'dns', 'domain', 'fs', 'http', 'https', 'os', 'path', 'perf_hooks', 
+              'punycode', 'querystring', 'readline', 'stream', 'string_decoder', 
+              'tls', 'tty', 'url', 'util', 'vm', 'zlib','net'
+            ].map(module => ({
+              [module]: false,
+            }))
+          ),
+        },
+      },
     },
   },
 });

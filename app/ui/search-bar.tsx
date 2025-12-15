@@ -1,4 +1,6 @@
-'use client';
+// written by: Paul
+  // tested by: Paul, Andrew, Jordan, Others...
+  'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
@@ -12,22 +14,16 @@ export default function SearchBar({ placeholder }: { placeholder: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // --- State Management for Input Value ---
-  // Initialize with an empty string for consistent server/client initial render
   const [inputValue, setInputValue] = useState('');
 
-  // --- Effect to Sync Input Value with URL (Runs ONLY on Client) ---
+  // --- Effect to Sync Input Value with URL (Runs on Client) ---
   useEffect(() => {
     // Get the query from URL params *after* component has mounted
     const queryFromUrl = pathname === '/musicgrid/search' ? searchParams.get('query')?.toString() ?? '' : '';
     // Update state if it differs from the URL
-    // This avoids the hydration mismatch by setting the value client-side
     if (queryFromUrl !== inputValue) {
         setInputValue(queryFromUrl);
     }
-    // We only want this effect to run when the URL actually changes,
-    // and also sync the initial state based on the URL after mount.
-    // The dependency array ensures it runs on mount and when path/params change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams]); // Rerun when URL changes
 
   // --- Debounced Navigation ---
@@ -53,7 +49,7 @@ export default function SearchBar({ placeholder }: { placeholder: string }) {
     handleSearch(newValue); // Trigger debounced navigation/search
   };
 
-  // --- Effect to Focus Input on Search Page Load/Update (Runs ONLY on Client) ---
+  // --- Effect to Focus Input on Search Page Load/Update (Runs on Client) ---
   useEffect(() => {
     if (pathname === '/musicgrid/search' && inputRef.current) {
         if (document.activeElement !== inputRef.current) {
@@ -71,8 +67,6 @@ export default function SearchBar({ placeholder }: { placeholder: string }) {
         placeholder={placeholder}
         value={inputValue} // Bind to local state
         onChange={onInputChange} // Use controlled input handler
-        // Add spellCheck=false if you were seeing that attribute causing issues, otherwise it's often unnecessary
-        // spellCheck="false"
       />
       <Search className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900 dark:text-gray-400 dark:peer-focus:text-gray-300" />
     </div>

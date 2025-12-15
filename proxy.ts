@@ -1,3 +1,5 @@
+//Created by template and modified by Paul
+  // tested by: Paul, Andrew, Jordan, Others...
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 
